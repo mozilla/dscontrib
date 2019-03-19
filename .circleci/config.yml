@@ -22,7 +22,7 @@ jobs:
     - run:
         name: Run linting
         command: |
-          pip install flake8, isort
+          pip install flake8 isort
           flake8 src/
           isort --check-only --recursive src/
 

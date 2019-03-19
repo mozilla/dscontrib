@@ -3,7 +3,6 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 from mozanalysis.utils import all_
 
-
 # An easy way to filter for particular event types
 metric_library = {
     'session_start': {

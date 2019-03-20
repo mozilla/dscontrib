@@ -22,9 +22,8 @@ jobs:
     - run:
         name: Run linting
         command: |
-          pip install flake8 isort
+          pip install flake8
           flake8 src/
-          isort --check-only --recursive src/
 
 ####################
 # Workflows: see https://circleci.com/docs/2.0/workflows/

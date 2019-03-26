@@ -61,15 +61,13 @@ def get_thresholds(col, max_num_thresholds=101):
         A list of thresholds. By default these are de-duped percentiles
         of the nonzero data.
     """
+    # When taking quantiles, treat "0" as a special case so that we
+    # still have resolution if 99% of users are 0.
+    nonzero_quantiles = col[col > 0].quantile(
+        np.linspace(0, 1, max_num_thresholds)
+    )
     return sorted(
-        [np.float64(0)]
-        # When taking quantiles, treat "0" as a special case so that we
-        # still have resolution if 99% of users are 0.
-        + col[
-            col > 0
-        ].quantile(
-            np.linspace(0, 1, max_num_thresholds)
-        ).unique()
+        [np.float64(0)] + list(nonzero_quantiles.unique())
     )[:-1]  # The thresholds get used as `>` not `>=`, so exclude the max value
 
 

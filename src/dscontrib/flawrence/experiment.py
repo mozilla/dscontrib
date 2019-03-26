@@ -21,8 +21,12 @@ class Experiment(object):
             enrollments,
             experiment.filter_df(ms),
             [
-                F.sum(F.coalesce(ms.scalar_parent_browser_search_ad_clicks.google, F.lit(0))).alias('ad_clicks'),
-                F.sum(F.coalesce(ms.scalar_parent_browser_search_with_ads.google, F.lit(0))).alias('search_with_ads'),
+                F.sum(F.coalesce(
+                    ms.scalar_parent_browser_search_ad_clicks.google, F.lit(0)
+                )).alias('ad_clicks'),
+                F.sum(F.coalesce(
+                    ms.scalar_parent_browser_search_with_ads.google, F.lit(0)
+                )).alias('search_with_ads'),
             ],
             '20190325',
             0,

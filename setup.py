@@ -23,6 +23,8 @@ setup(
         'pyarrow>=0.8.0',
         'pyspark',
         'scipy',
-        'setuptools-scm',
     ],
+    setup_requires=[
+        'setuptools-scm',
+    ]
 )

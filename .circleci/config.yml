@@ -25,6 +25,30 @@ jobs:
           pip install flake8
           flake8 src/
 
+  pypi:
+    docker:
+      - image: python:2.7
+    steps:
+      - checkout
+      - run:
+          name: Install deployment tools
+          command: |
+            pip install --upgrade setuptools wheel twine
+      - run:
+          name: Create distribution files
+          command: |
+            python setup.py sdist bdist_wheel
+      - run:
+          name: Upload to PyPI
+          command: |
+            # Relies on the TWINE_USERNAME and TWINE_PASSWORD environment variables configured at:
+            #   https://circleci.com/gh/mozilla/dscontrib/edit#env-vars
+            # For more on twine, see:
+            #   https://twine.readthedocs.io/en/latest/
+            twine upload dist/*
+
+
+
 ####################
 # Workflows: see https://circleci.com/docs/2.0/workflows/
 ####################
@@ -34,3 +58,12 @@ workflows:
   build:
     jobs:
       - lint
+  pypi-upload:
+    jobs:
+      - lint
+      - deploy:
+          requires:
+            - lint
+          filters:
+            branches:
+              only: master

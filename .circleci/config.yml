@@ -61,7 +61,7 @@ workflows:
   pypi-upload:
     jobs:
       - lint
-      - deploy:
+      - pypi:
           requires:
             - lint
           filters:

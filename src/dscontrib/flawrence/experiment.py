@@ -97,6 +97,14 @@ class Experiment(object):
         - keep_client_id: Whether to return a `client_id` column. Defaults
             to False to reduce memory usage of the results.
         """
+        # TODO: print debug information about the enrollment dates for which
+        # we have sufficient data
+        self._check_windows(today, conv_window_start_days + conv_window_length_days)
+
+        df = self._filter_df_for_conv_window(
+            df, today, conv_window_start_days, conv_window_length_days
+        )
+
         # TODO: can/should we switch from submission_date_s3 to when the
         # events actually happened?
         res = enrollments.filter(
@@ -104,12 +112,12 @@ class Experiment(object):
             # TODO: print debug info if it throws out enrollments
             # when `num_days_enrollment is not None`?
             enrollments.enrollment_date < add_days(
-                today,
-                -1 - conv_window_length_days - conv_window_start_days
+                today, -1 - conv_window_length_days - conv_window_start_days
             )
         ).join(
-            # TODO: coarsely filter `df` by conv window and enrollment dates
-            df,
+            df.filter(df.submission_date_s3 >= add_days(
+                self.start_date, conv_window_start_days
+            )),
             [
                 # TODO: would it be faster if we enforce a join on sample_id?
                 enrollments.client_id == df.client_id,
@@ -139,6 +147,62 @@ class Experiment(object):
             return res
         else:
             return res.drop(enrollments.client_id)
+
+    def _check_windows(self, today, min_days_per_user):
+        """Check that the conversion window dates make sense
+
+        We need min_days_per_user days of post-enrollment data per user.
+        This places limits on how early we can run certain analyses.
+        This method calculates and presents these limits.
+        """
+        slack = 1  # 1 day of slack: assume yesterday's data is not present
+        last_enrollment_date = add_days(
+            today, -1 - min_days_per_user - slack
+        )
+
+        if self.num_days_enrollment is not None:
+            official_last_enrollment_date = add_days(
+                self.start_date, self.num_days_enrollment - 1
+            )
+            assert last_enrollment_date >= official_last_enrollment_date, \
+                "You said you wanted {} days of enrollment, ".format(
+                    self.num_days_enrollment
+                ) + "but your conversion window of {} days won't have ".format(
+                    min_days_per_user
+                ) + "complete data until we have the data for {}.".format(
+                    add_days(official_last_enrollment_date, 1 + min_days_per_user)
+                )
+
+            last_enrollment_date = official_last_enrollment_date
+
+        print("Taking enrollments between {} and {}".format(
+            self.start_date, last_enrollment_date
+        ))
+        assert self.start_date <= last_enrollment_date, \
+            "No users have had time to convert yet"
+
+    def _filter_df_for_conv_window(
+        self, df, today, conv_window_start_days, conv_window_length_days
+    ):
+        """Return the df, filtered to the relevant dates.
+
+        This should not affect the results - it should just speed
+        things up.
+        """
+        if self.num_days_enrollment is not None:
+            # Ignore data after the conversion window of the last enrollment
+            df = df.filter(
+                df.submission_date_s3 <= add_days(
+                    self.start_date,
+                    self.num_days_enrollment + conv_window_start_days
+                    + conv_window_length_days
+                )
+            )
+
+        # Ignore data before the conversion window of the first enrollment
+        return df.filter(df.submission_date_s3 >= add_days(
+            self.start_date, conv_window_start_days
+        ))
 
     def check_consistency(self, enrollments, df):
         """Check that the enrollments view is consistent with the data view

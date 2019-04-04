@@ -14,7 +14,7 @@ class Experiment(object):
         study_name = 'pref-flip-defaultoncookierestrictions-1523780'  # new
         ms = spark.table('main_summary')
 
-        experiment = Experiment(study_name, '20190210')
+        experiment = Experiment(study_name, start_date='20190210')
         enrollments = experiment.get_enrollments(spark)
 
         res = experiment.get_per_client_data(
@@ -28,10 +28,15 @@ class Experiment(object):
                     ms.scalar_parent_browser_search_with_ads.google, F.lit(0)
                 )).alias('search_with_ads'),
             ],
-            '20190325',
-            0,
-            7
+            today='20190325',
+            conv_window_start_days=0,
+            conv_window_length_days=7
         )
+
+
+    FIXME: don't filter by experiment map or join on branch, so we get data
+    from unenrolled people. Add an automatic column to the per-client data
+    that says whether the user unenrolled or changed branch.'
     """
     def __init__(self, experiment_slug, start_date, num_days_enrollment=None):
         self.experiment_slug = experiment_slug
@@ -48,6 +53,18 @@ class Experiment(object):
         )
 
     def get_enrollments(self, spark):
+        """Return a DataFrame of enrolled clients.
+
+        This works for pref-flip studies.
+
+        As of 2019/04/02, branch information isn't reliably available in
+        the `events` table for addon experiments: branch may be NULL for
+        all enrollments. The enrollment information for them is most
+        reliably available in `telemetry_shield_study_parquet`. So use
+        `get_enrollments_addon_exp()` for addon experiments until the
+        underlying issue is resolved.
+        Ref: https://bugzilla.mozilla.org/show_bug.cgi?id=1536644
+        """
         events = spark.table('events')
         enrollments = events.filter(
             events.submission_date_s3 >= self.start_date
@@ -67,10 +84,44 @@ class Experiment(object):
             )
 
         # TODO: should we also call `broadcast()`? Should we cache?
+        # TODO: should we filter clients enrolled multiple times?
         return enrollments.select(
             enrollments.client_id,
             enrollments.submission_date_s3.alias('enrollment_date'),
             enrollments.event_map_values.branch.alias('branch'),
+        )
+
+    def get_enrollments_addon_exp(self, spark):
+        """Temporary alternative to `get_enrollments` for addon experiments.
+
+        As of 2019/04/02, branch information isn't reliably available in
+        the `events` table for addon experiments: branch may be NULL for
+        all enrollments. The enrollment information for them is most
+        reliably available in `telemetry_shield_study_parquet`.
+        Ref: https://bugzilla.mozilla.org/show_bug.cgi?id=1536644
+        """
+        tssp = spark.table('telemetry_shield_study_parquet')
+        enrollments = tssp.filter(
+            tssp.submission >= self.start_date
+        ).filter(
+            tssp.payload.data.study_state == 'enter'
+        ).filter(
+            tssp.payload.study_name == self.experiment_slug
+        )
+
+        if self.num_days_enrollment is not None:
+            enrollments = enrollments.filter(
+                tssp.submission < add_days(
+                    self.start_date, self.num_days_enrollment
+                )
+            )
+
+        # TODO: should we also call `broadcast()`? Should we cache?
+        # TODO: should we filter clients enrolled multiple times?
+        return enrollments.select(
+            enrollments.client_id,
+            enrollments.submission.alias('enrollment_date'),
+            enrollments.payload.branch.alias('branch'),
         )
 
     def get_per_client_data(

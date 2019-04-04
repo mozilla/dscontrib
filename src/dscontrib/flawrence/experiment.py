@@ -32,11 +32,6 @@ class Experiment(object):
             conv_window_start_days=0,
             conv_window_length_days=7
         )
-
-
-    FIXME: don't filter by experiment map or join on branch, so we get data
-    from unenrolled people. Add an automatic column to the per-client data
-    that says whether the user unenrolled or changed branch.'
     """
     def __init__(self, experiment_slug, start_date, num_days_enrollment=None):
         self.experiment_slug = experiment_slug

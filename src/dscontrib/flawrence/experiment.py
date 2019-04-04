@@ -19,7 +19,7 @@ class Experiment(object):
 
         res = experiment.get_per_client_data(
             enrollments,
-            experiment.filter_df(ms),
+            ms,
             [
                 F.sum(F.coalesce(
                     ms.scalar_parent_browser_search_ad_clicks.google, F.lit(0)
@@ -42,15 +42,6 @@ class Experiment(object):
         self.experiment_slug = experiment_slug
         self.start_date = start_date
         self.num_days_enrollment = num_days_enrollment
-
-    def filter_df(self, df):
-        return df.filter(
-            ~F.isnull(df.experiments[self.experiment_slug])
-        ).filter(
-            df.submission_date_s3 >= self.start_date
-        ).withColumn(
-            'branch', df.experiments[self.experiment_slug]
-        )
 
     def get_enrollments(self, spark):
         """Return a DataFrame of enrolled clients.
@@ -135,6 +126,9 @@ class Experiment(object):
             returned by `self.get_enrollments()`.
         - df: A spark DataFrame containing the data needed to calculate
             the metrics. Could be `main_summary` or `clients_daily`.
+            _Don't_ use `experiments`; as of 2019/04/02 it drops data
+            collected after people self-unenroll, so unenrolling users
+            will appear to churn.
         - metric_list: A list of columns that aggregate and compute
             metrics, e.g.
                 `[F.coalesce(F.sum(df.metric_name), F.lit(0)).alias('metric_name')]`
@@ -148,13 +142,7 @@ class Experiment(object):
         - keep_client_id: Whether to return a `client_id` column. Defaults
             to False to reduce memory usage of the results.
         """
-        # TODO: print debug information about the enrollment dates for which
-        # we have sufficient data
         self._check_windows(today, conv_window_start_days + conv_window_length_days)
-
-        df = self._filter_df_for_conv_window(
-            df, today, conv_window_start_days, conv_window_length_days
-        )
 
         # TODO: can/should we switch from submission_date_s3 to when the
         # events actually happened?
@@ -166,15 +154,21 @@ class Experiment(object):
                 today, -1 - conv_window_length_days - conv_window_start_days
             )
         ).join(
-            df.filter(df.submission_date_s3 >= add_days(
-                self.start_date, conv_window_start_days
-            )),
+            self._filter_df_for_conv_window(
+                df, today, conv_window_start_days, conv_window_length_days
+            ),
             [
                 # TODO: would it be faster if we enforce a join on sample_id?
                 enrollments.client_id == df.client_id,
-                enrollments.branch == df.branch,
+
+                # TODO: once we can rely on
+                #   `df.experiments[self.experiment_slug]`
+                # existing even after unenrollment, we could start joining on
+                # branch to reduce problems associated with split client_ids.
+
                 # Do a quick pass aiming to efficiently filter out lots of rows:
                 enrollments.enrollment_date <= df.submission_date_s3,
+
                 # Now do a more thorough pass filtering out irrelevant data:
                 # TODO: is there a more efficient way to do this?
                 (
@@ -185,14 +179,24 @@ class Experiment(object):
                 ).between(
                     conv_window_start_days,
                     conv_window_start_days + conv_window_length_days
-                )
+                ),
+
+                # Try to filter data from day of enrollment before time of enrollment.
+                # If the client enrolled and unenrolled on the same day then this
+                # will also filter out that day's post unenrollment data but that's
+                # probably the smallest and most innocuous evil on the menu.
+                (
+                    (enrollments.enrollment_date != df.submission_date_s3)
+                    | (~F.isnull(df.experiments[self.experiment_slug]))
+                ),
 
             ],
             'left'
         ).groupBy(
             enrollments.client_id, enrollments.branch
         ).agg(
-            *metric_list
+            *metric_list,
+            *self._get_telemetry_sanity_check_metrics(enrollments, df),
         )
         if keep_client_id:
             return res
@@ -254,6 +258,25 @@ class Experiment(object):
         return df.filter(df.submission_date_s3 >= add_days(
             self.start_date, conv_window_start_days
         ))
+
+    def _get_telemetry_sanity_check_metrics(self, enrollments, df):
+        """Return aggregations that check for problems with a client."""
+        return [
+            # Check to see whether the client_id is also enrolled in other branches
+            # E.g. indicates cloned profiles. Fraction of such users should be
+            # small, and similar between branches.
+            F.max(F.coalesce((
+                df.experiments[self.experiment_slug] != enrollments.branch
+            ).astype('int'), F.lit(0))).alias('has_contradictory_branch'),
+            # Check to see whether the client_id was sending data in the conversion
+            # window that wasn't tagged as being part of the experiment. Indicates
+            # either a client_id clash, or the client unenrolling. Fraction of such
+            # users should be small, and similar between branches.
+            F.max(F.coalesce((
+                ~F.isnull(df.experiments)
+                & F.isnull(df.experiments[self.experiment_slug])
+            ).astype('int'), F.lit(0))).alias('has_non_enrolled_data'),
+        ]
 
     def check_consistency(self, enrollments, df):
         """Check that the enrollments view is consistent with the data view

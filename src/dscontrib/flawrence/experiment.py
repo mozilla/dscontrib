@@ -190,8 +190,7 @@ class Experiment(object):
         ).groupBy(
             enrollments.client_id, enrollments.branch
         ).agg(
-            *metric_list,
-            *self._get_telemetry_sanity_check_metrics(enrollments, df),
+            *(metric_list + self._get_telemetry_sanity_check_metrics(enrollments, df))
         )
         if keep_client_id:
             return res

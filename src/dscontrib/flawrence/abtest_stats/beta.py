@@ -10,6 +10,81 @@ from dscontrib.flawrence.abtest_stats import (
 
 
 def compare_two(
+    df, col_label, focus_label=None, control_label='control', num_samples=None
+):
+    """Jointly sample conversion rates for two branches then compare them.
+
+    See `compare_two_from_summary` for more details.
+
+    Args:
+        df: a pandas DataFrame of experiment data. Each row represents
+            data about an individual test subject. One column is named
+            'branch' and contains the test subject's branch. The other
+            columns contain the test subject's values for each metric.
+            The column to be analyzed (named `col_label`) should be
+            boolean or 0s and 1s.
+        col_label: Label for the df column contaning the metric to be
+            analyzed.
+        focus_label: String in `df['branch']` that identifies the
+            target non-control branch, the branch for which we want to
+            calculate uplifts.
+        control_label: String in `df['branch']` that identifies the
+            control branch, the branch with respect to which we want to
+            calculate uplifts.
+        num_samples: The number of samples to compute
+
+    Returns a pandas.Series of summary statistics for the possible
+    uplifts - see docs for `compare_two_sample_sets`
+    """
+    # TODO: assert that the column is binary
+    summary = df.groupby('branch')[col_label].agg({
+        'num_enrollments': len,
+        'num_conversions': np.sum
+    })
+
+    if len(summary) > 2:
+        # Multi-branch test; need to know which two branches to compare
+        assert focus_label is not None
+        summary = summary.loc[[focus_label, control_label]]
+
+    return compare_two_from_summary(
+        summary, control_label=control_label, num_samples=num_samples
+    )
+
+
+def compare_many(df, col_label, num_samples=None):
+    """Jointly sample conversion rates for many branches then compare them.
+
+    See `compare_many_from_summary` for more details.
+
+    Args:
+        df: a pandas DataFrame of experiment data. Each row represents
+            data about an individual test subject. One column is named
+            'branch' and contains the test subject's branch. The other
+            columns contain the test subject's values for each metric.
+            The column to be analyzed (named `col_label`) should be
+            boolean or 0s and 1s.
+        col_label: Label for the df column contaning the metric to be
+            analyzed.
+        num_samples: The number of samples to compute
+
+    Returns a pandas.DataFrame of summary statistics for the possible
+    uplifts:
+        - columns: equivalent to rows output by `compare_two()`
+        - index: list of branches
+    """
+    # TODO: assert that the column is binary
+    summary = df.groupby('branch')[col_label].agg({
+        'num_enrollments': len,
+        'num_conversions': np.sum
+    })
+
+    return compare_many_from_summary(
+        summary, num_samples=num_samples
+    )
+
+
+def compare_two_from_summary(
     df,
     control_label='control',
     num_enrollments_label='num_enrollments',
@@ -56,7 +131,7 @@ def compare_two(
     return res
 
 
-def compare_many(
+def compare_many_from_summary(
     df,
     num_enrollments_label='num_enrollments',
     num_conversions_label='num_conversions',

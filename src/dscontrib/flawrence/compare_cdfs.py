@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 
-from dscontrib.flawrence.abtest_stats.beta import compare_two
+from dscontrib.flawrence.abtest_stats.beta import compare_two_from_summary
 
 
 def compare_cdfs(df, col_label, control_label='control'):
@@ -101,7 +101,7 @@ def plot_cdf(pt, ax, xlabel):
 def plot_relative_differences(pt, ax, control_label, xlabel):
     for c in pt.columns.drop(control_label):
         res = pd.DataFrame([
-            compare_two(
+            compare_two_from_summary(
                 pt[[c, control_label]].T,
                 control_label=control_label,
                 num_conversions_label=x

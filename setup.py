@@ -21,8 +21,6 @@ setup(
     install_requires=[
         "numpy",
         "pandas",
-        "py4j",
-        "pyarrow>=0.8.0",
         "scipy"
     ],
 )

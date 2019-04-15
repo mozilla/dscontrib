@@ -23,7 +23,6 @@ setup(
         "pandas",
         "py4j",
         "pyarrow>=0.8.0",
-        "pyspark",
         "scipy"
     ],
 )

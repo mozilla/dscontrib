@@ -3,14 +3,15 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 import pandas as pd
 import numpy as np
+import scipy.stats as st
 
 from dscontrib.flawrence.abtest_stats import (
-    res_columns, compare_two_sample_sets
+    res_columns, one_res_index, compare_two_sample_sets
 )
 
 
 def compare_two(
-    df, col_label, focus_label=None, control_label='control', num_samples=None
+    df, col_label, focus_label=None, control_label='control', num_samples=10000
 ):
     """Jointly sample conversion rates for two branches then compare them.
 
@@ -36,7 +37,9 @@ def compare_two(
     Returns a pandas.Series of summary statistics for the possible
     uplifts - see docs for `compare_two_sample_sets`
     """
-    # TODO: assert that the column is binary
+    # I would have used `isin` but it seems to be ~100x slower?
+    assert ((df[col_label] == 0) | (df[col_label] == 1)).all()
+
     summary = df.groupby('branch')[col_label].agg({
         'num_enrollments': len,
         'num_conversions': np.sum
@@ -52,7 +55,7 @@ def compare_two(
     )
 
 
-def compare_many(df, col_label, num_samples=None):
+def compare_many(df, col_label, num_samples=10000):
     """Jointly sample conversion rates for many branches then compare them.
 
     See `compare_many_from_summary` for more details.
@@ -73,7 +76,7 @@ def compare_many(df, col_label, num_samples=None):
         - columns: equivalent to rows output by `compare_two()`
         - index: list of branches
     """
-    # TODO: assert that the column is binary
+    assert (df[col_label] == 0) | (df[col_label] == 1).all()
     summary = df.groupby('branch')[col_label].agg({
         'num_enrollments': len,
         'num_conversions': np.sum
@@ -82,6 +85,21 @@ def compare_many(df, col_label, num_samples=None):
     return compare_many_from_summary(
         summary, num_samples=num_samples
     )
+
+
+def summarize_one_from_summary(
+    s, num_enrollments_label='num_enrollments', num_conversions_label='num_conversions'
+):
+    res = pd.Series(index=one_res_index)
+    res['mean'] = s.loc[num_conversions_label] / s.loc[num_enrollments_label]
+
+    ppfs = [0.005, 0.05, 0.95, 0.995]
+    res[[str(v) for v in ppfs]] = st.beta(
+        s.loc[num_conversions_label] + 1,
+        s.loc[num_enrollments_label] - s.loc[num_conversions_label] + 1
+    ).ppf(ppfs)
+
+    return res
 
 
 def compare_two_from_summary(
@@ -115,6 +133,7 @@ def compare_two_from_summary(
 
     Returns a pandas.Series of summary statistics for the possible
     uplifts - see docs for `compare_two_sample_sets`
+    FIXME: update docs
     """
     assert len(df.index) == 2
     assert control_label in df.index, "Which branch is the control?"
@@ -125,10 +144,19 @@ def compare_two_from_summary(
         df, num_enrollments_label, num_conversions_label, num_samples
     )
 
-    res = compare_two_sample_sets(samples[test_label], samples[control_label])
-    res.name = num_conversions_label
+    comparative = compare_two_sample_sets(samples[test_label], samples[control_label])
+    comparative.name = num_conversions_label
 
-    return res
+    individual = {
+        l: summarize_one_from_summary(
+            df.loc[l], num_enrollments_label, num_conversions_label
+        ) for l in [control_label, test_label]
+    }
+
+    return {
+        'comparative': comparative,
+        'individual': individual
+    }
 
 
 def compare_many_from_summary(
@@ -168,8 +196,10 @@ def compare_many_from_summary(
         df, num_enrollments_label, num_conversions_label, num_samples
     )
 
-    res = pd.DataFrame(index=df.index, columns=res_columns)
-    res.name = num_conversions_label
+    comparative = pd.DataFrame(index=df.index, columns=res_columns)
+    comparative.name = num_conversions_label
+
+    individual = {}
 
     for branch in df.index:
         # Compare this branch to the best of the rest
@@ -178,9 +208,15 @@ def compare_many_from_summary(
         # Warning: assumes we're trying to maximise the metric
         best_of_rest = samples.drop(branch, axis='columns').max(axis='columns')
 
-        res.loc[branch] = compare_two_sample_sets(this_branch, best_of_rest)
+        comparative.loc[branch] = compare_two_sample_sets(this_branch, best_of_rest)
+        individual[branch] = summarize_one_from_summary(
+            df.loc[branch], num_enrollments_label, num_conversions_label
+        )
 
-    return res
+    return {
+        'comparative': comparative,
+        'individual': individual
+    }
 
 
 def _generate_samples(

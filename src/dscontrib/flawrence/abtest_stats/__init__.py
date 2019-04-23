@@ -5,6 +5,9 @@ import numpy as np
 import pandas as pd
 
 
+# TODO: is this kind of standardization helpful?
+# Will it discourage Bonferroni corrections? Is that a major problem?
+
 res_columns = [
     'rel_uplift_0.005',
     'rel_uplift_0.05',
@@ -19,6 +22,15 @@ res_columns = [
     'abs_uplift_0.995',
     'abs_uplift_exp',
     'max_abs_diff_0.95',
+]
+
+
+one_res_index = [
+    '0.005',
+    '0.05',
+    'mean',
+    '0.95',
+    '0.995',
 ]
 
 # TODO: use dictionaries instead of Series?
@@ -48,7 +60,7 @@ def compare_two_sample_sets(focus, reference):
     return res
 
 
-def summarise_one_sample_set(data):
+def summarize_one_sample_set(data):
     res = pd.Series(index=['0.05', 'mean', '0.95'])
     res[['0.05', '0.95']] = np.quantile(data, [0.05, 0.95])
     res['mean'] = np.mean(data)

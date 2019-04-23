@@ -6,7 +6,7 @@ import numpy as np
 import mozanalysis.stats as mzas
 
 from dscontrib.flawrence.abtest_stats import (
-    summarise_one_sample_set, compare_two_sample_sets
+    summarize_one_sample_set, compare_two_sample_sets
 )
 
 
@@ -24,7 +24,7 @@ def bootstrap_one(sc, data, num_samples=10000, seed_start=0):
             be unique to this set of calculations.
     """
     samples = _resample_parallel(sc, data, num_samples, seed_start)
-    return summarise_one_sample_set(samples)
+    return summarize_one_sample_set(samples)
 
 
 def bootstrap_two(
@@ -70,6 +70,7 @@ def bootstrap_two(
         assert col_label is None and focus_label is None
     else:
         assert focus is None and reference is None
+        assert focus_label is not None
         focus = df[col_label][df.branch == focus_label]
         reference = df[col_label][df.branch == control_label]
 
@@ -86,8 +87,8 @@ def bootstrap_two(
         'comparative':
             compare_two_sample_sets(focus_samples, reference_samples),
         'individual': [
-                summarise_one_sample_set(focus_samples),
-                summarise_one_sample_set(reference_samples)
+                summarize_one_sample_set(focus_samples),
+                summarize_one_sample_set(reference_samples)
             ],
     }
 

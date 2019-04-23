@@ -45,6 +45,9 @@ class Experiment(object):
             factor '7' removes weekly seasonality, and the `+1` accounts
             for the fact that enrollment typically starts a few hours
             before UTC midnight.
+        addon_version (str): The version of the experiment addon. Some
+            addon experiment slugs get reused - in those cases we need to
+            filter on the addon version also.
 
     Attributes:
         experiment_slug (str): Name of the study, used to identify
@@ -58,8 +61,14 @@ class Experiment(object):
             factor '7' removes weekly seasonality, and the `+1` accounts
             for the fact that enrollment typically starts a few hours
             before UTC midnight.
+        addon_version (str): The version of the experiment addon. Some
+            addon experiment slugs get reused - in those cases we need to
+            filter on the addon version also.
     """
-    def __init__(self, experiment_slug, start_date, num_dates_enrollment=None):
+    def __init__(
+        self, experiment_slug, start_date, num_dates_enrollment=None,
+        addon_version=None
+    ):
         # I've been conservative about storing state - it doesn't belong
         # in this class.
         # Treat these attributes as immutable.
@@ -72,6 +81,7 @@ class Experiment(object):
         self.experiment_slug = experiment_slug
         self.start_date = start_date
         self.num_dates_enrollment = num_dates_enrollment
+        self.addon_version = addon_version
 
     def get_enrollments(self, spark, study_type='pref_flip', end_date=None):
         """Return a DataFrame of enrolled clients.
@@ -109,7 +119,7 @@ class Experiment(object):
             enrollments = self._get_enrollments_view_normandy(spark)
 
         elif study_type == 'addon':
-            enrollments = self._get_enrollments_view_addon(spark)
+            enrollments = self._get_enrollments_view_addon(spark, self.addon_version)
 
         # elif study_type == 'glean':
         #     raise NotImplementedError
@@ -286,7 +296,7 @@ class Experiment(object):
         )
 
     @staticmethod
-    def _get_enrollments_view_addon(spark):
+    def _get_enrollments_view_addon(spark, addon_version=None):
         """Return a DataFrame of all addon study enrollment events.
 
         Filter the `telemetry_shield_study_parquet` to enrollment events
@@ -296,6 +306,11 @@ class Experiment(object):
             spark: The spark context.
         """
         tssp = spark.table('telemetry_shield_study_parquet')
+
+        if addon_version is not None:
+            tssp = tssp.filter(
+                tssp.payload.addon_version == addon_version
+            )
 
         return tssp.filter(
             tssp.payload.data.study_state == 'enter'
@@ -439,6 +454,11 @@ class Experiment(object):
         # TODO: Once we know what form the metrics library will take,
         # we should move the below metric definitions and documentation
         # into it.
+
+        if dict(df.dtypes).get('experiments') != 'map<string,string>':
+            # Not all tables have an experiments map - can't make these checks.
+            return []
+
         return [
 
             # Check to see whether the client_id is also enrolled in other branches

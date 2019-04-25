@@ -9,29 +9,60 @@ from dscontrib.flawrence.util import add_days
 class Experiment(object):
     """Get DataFrames of experiment data; store experiment metadata.
 
-    FIXME: choose a smaller study so it's faster to run the example
-    Example usage:
-        study_name = 'pref-flip-defaultoncookierestrictions-1523780'  # new
-        ms = spark.table('main_summary')
+    The methods here query data in a way compatible with the following
+    principles, which are important for experiment analysis:
 
-        experiment = Experiment(study_name, start_date='20190210')
+    - The population of clients in each branch must have the same
+        properties, aside from the intervention itself and its
+        consequences; i.e. there must be no underlying bias in the
+        branch populations.
+    - Every client should have an equal opportunity to convert, so that
+        we are measuring the same thing for each client.
+
+    So that our analyses follow these abstract principles, we follow
+    these rules:
+
+    - Start with a list of all clients who enrolled.
+    - We can filter this list of clients only based on information known
+        to us at or before the time that they enrolled, because later
+        information might be causally connected to the intervention.
+    - For any given metric, every client gets a non-null value; we don't
+        implicitly ignore anyone, even if they churned and stopped
+        sending data.
+    - Typically if an enrolled user no longer qualifies for enrollment,
+        we'll still want to include their data in the analysis, unless
+        we're explicitly using stats methods that handle censored data.
+
+
+    Example usage:
+        cd = spark.table('clients_daily')
+
+        experiment = Experiment(
+            experiment_slug='pref-flip-defaultoncookierestrictions-1506704',
+            start_date='20181215',
+            num_dates_enrollment=8
+        )
         enrollments = experiment.get_enrollments(spark)
 
         res = experiment.get_per_client_data(
             enrollments,
-            ms,
+            cd,
             [
                 F.sum(F.coalesce(
-                    ms.scalar_parent_browser_search_ad_clicks.google, F.lit(0)
-                )).alias('ad_clicks'),
+                    cd.active_hours_sum, F.lit(0)
+                )).alias('active_hours'),
                 F.sum(F.coalesce(
-                    ms.scalar_parent_browser_search_with_ads.google, F.lit(0)
-                )).alias('search_with_ads'),
+                    cd.scalar_parent_browser_engagement_total_uri_count_sum,
+                    F.lit(0)
+                )).alias('uri_count'),
             ],
-            last_date_full_data='20190325',
+            last_date_full_data='20190107',
             conv_window_start_days=0,
             conv_window_length_days=7
         )
+
+        # Pull data into a pandas df, ready for running stats
+        pres = res.toPandas()
 
     Args:
         experiment_slug (str): Name of the study, used to identify
@@ -69,9 +100,8 @@ class Experiment(object):
         self, experiment_slug, start_date, num_dates_enrollment=None,
         addon_version=None
     ):
-        # I've been conservative about storing state - it doesn't belong
-        # in this class.
-        # Treat these attributes as immutable.
+        # Let's be conservative about storing state - it doesn't belong
+        # in this class. Treat these attributes as immutable.
         # These attributes are stored because it would be a PITA not to
         # store them:
         #   - they are required by both `get_enrollments()` and
@@ -144,7 +174,6 @@ class Experiment(object):
             )
 
         enrollments.cache()
-        F.broadcast(enrollments)
 
         return enrollments
 
@@ -165,8 +194,9 @@ class Experiment(object):
                 columns:
                     - client_id (str)
                     - submission_date_s3 (str)
-                    - experiments (map)
                     - data columns referred to in `metric_list`
+                Ideally also has:
+                    - experiments (map)
             metric_list: A list of columns that aggregate and compute
                 metrics, e.g.
                 `[F.coalesce(F.sum(df.metric_name), F.lit(0)).alias('metric_name')]`

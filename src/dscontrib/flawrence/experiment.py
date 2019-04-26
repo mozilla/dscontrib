@@ -198,7 +198,7 @@ class Experiment(object):
                 Ideally also has:
                     - experiments (map)
             metric_list: A list of columns that aggregate and compute
-                metrics, e.g.
+                metrics over data grouped by `(client_id, branch)`, e.g.
                 `[F.coalesce(F.sum(df.metric_name), F.lit(0)).alias('metric_name')]`
             last_date_full_data (str): The most recent date for which we
                 have complete data, e.g. '20190322'. If you want to ignore
@@ -241,9 +241,6 @@ class Experiment(object):
         if self.num_dates_enrollment is None:
             self._print_enrollment_window(last_date_full_data, req_dates_of_data)
 
-        # TODO accuracy: can/should we switch from submission_date_s3 to when the
-        # events actually happened?
-
         enrollments = self.filter_enrollments_for_conv_window(
             enrollments, last_date_full_data, req_dates_of_data
         )
@@ -252,45 +249,47 @@ class Experiment(object):
             df, last_date_full_data, conv_window_start_days, conv_window_length_days
         )
 
+        join_on = [
+            # TODO perf: would it be faster if we enforce a join on sample_id?
+            enrollments.client_id == df.client_id,
+
+            # TODO accuracy: once we can rely on
+            #   `df.experiments[self.experiment_slug]`
+            # existing even after unenrollment, we could start joining on
+            # branch to reduce problems associated with split client_ids:
+            # enrollments.branch == df.experiments[self.experiment_slug]
+
+            # Do a quick pass aiming to efficiently filter out lots of rows:
+            enrollments.enrollment_date <= df.submission_date_s3,
+
+            # Now do a more thorough pass filtering out irrelevant data:
+            # TODO perf: what is a more efficient way to do this?
+            (
+                (
+                    F.unix_timestamp(df.submission_date_s3, 'yyyyMMdd')
+                    - F.unix_timestamp(enrollments.enrollment_date, 'yyyyMMdd')
+                ) / (24 * 60 * 60)
+            ).between(
+                conv_window_start_days,
+                conv_window_start_days + conv_window_length_days - 1
+            ),
+        ]
+
+        if 'experiments' in df.columns:
+            # Try to filter data from day of enrollment before time of enrollment.
+            # If the client enrolled and unenrolled on the same day then this
+            # will also filter out that day's post unenrollment data but that's
+            # probably the smallest and most innocuous evil on the menu.
+            join_on.append(
+                (enrollments.enrollment_date != df.submission_date_s3)
+                | (~F.isnull(df.experiments[self.experiment_slug]))
+            ),
+
         sanity_metrics = self._get_telemetry_sanity_check_metrics(enrollments, df)
 
         res = enrollments.join(
             df,
-            [
-                # TODO perf: would it be faster if we enforce a join on sample_id?
-                enrollments.client_id == df.client_id,
-
-                # TODO accuracy: once we can rely on
-                #   `df.experiments[self.experiment_slug]`
-                # existing even after unenrollment, we could start joining on
-                # branch to reduce problems associated with split client_ids:
-                # enrollments.branch == df.experiments[self.experiment_slug]
-
-                # Do a quick pass aiming to efficiently filter out lots of rows:
-                enrollments.enrollment_date <= df.submission_date_s3,
-
-                # Now do a more thorough pass filtering out irrelevant data:
-                # TODO perf: what is a more efficient way to do this?
-                (
-                    (
-                        F.unix_timestamp(df.submission_date_s3, 'yyyyMMdd')
-                        - F.unix_timestamp(enrollments.enrollment_date, 'yyyyMMdd')
-                    ) / (24 * 60 * 60)
-                ).between(
-                    conv_window_start_days,
-                    conv_window_start_days + conv_window_length_days - 1
-                ),
-
-                # Try to filter data from day of enrollment before time of enrollment.
-                # If the client enrolled and unenrolled on the same day then this
-                # will also filter out that day's post unenrollment data but that's
-                # probably the smallest and most innocuous evil on the menu.
-                (
-                    (enrollments.enrollment_date != df.submission_date_s3)
-                    | (~F.isnull(df.experiments[self.experiment_slug]))
-                ),
-
-            ],
+            join_on,
             'left'
         ).groupBy(
             enrollments.client_id, enrollments.branch

@@ -10,32 +10,31 @@ from dscontrib.flawrence.abtest_stats import (
 )
 
 
-def compare_two(
-    df, col_label, focus_label=None, control_label='control', num_samples=10000
+def compare(
+    df, col_label, ref_branch_label='control', num_samples=10000
 ):
-    """Jointly sample conversion rates for two branches then compare them.
+    """Jointly sample conversion rates for branches then compare them.
 
-    See `compare_two_from_summary` for more details.
+    See `compare_from_summary` for more details.
 
     Args:
-        df: a pandas DataFrame of experiment data. Each row represents
-            data about an individual test subject. One column is named
-            'branch' and contains the test subject's branch. The other
-            columns contain the test subject's values for each metric.
-            The column to be analyzed (named `col_label`) should be
-            boolean or 0s and 1s.
+        df: a pandas DataFrame of queried experiment data in the standard
+            format.
         col_label: Label for the df column contaning the metric to be
             analyzed.
-        focus_label: String in `df['branch']` that identifies the
-            target non-control branch, the branch for which we want to
-            calculate uplifts.
-        control_label: String in `df['branch']` that identifies the
-            control branch, the branch with respect to which we want to
-            calculate uplifts.
-        num_samples: The number of samples to compute
+        ref_branch_label: String in `df['branch']` that identifies the
+            the branch with respect to which we want to calculate
+            uplifts - usually the control branch.
+        num_samples: The number of samples to compute.
 
-    Returns a pandas.Series of summary statistics for the possible
-    uplifts - see docs for `compare_two_sample_sets`
+    Returns a dictionary:
+        'comparative': dictionary mapping branch names to a pandas
+            Series of summary statistics for the possible uplifts of the
+            conversion rate relative to the reference branch - see docs
+            for `compare_two_sample_sets`.
+        'individual': dictionary mapping branch names to a pandas
+            Series of summary stats for the posterior distribution over
+            the branch's conversion rate.
     """
     # I would have used `isin` but it seems to be ~100x slower?
     assert ((df[col_label] == 0) | (df[col_label] == 1)).all()
@@ -45,13 +44,8 @@ def compare_two(
         'num_conversions': np.sum
     })
 
-    if len(summary) > 2:
-        # Multi-branch test; need to know which two branches to compare
-        assert focus_label is not None
-        summary = summary.loc[[focus_label, control_label]]
-
-    return compare_two_from_summary(
-        summary, control_label=control_label, num_samples=num_samples
+    return compare_from_summary(
+        summary, ref_branch_label=ref_branch_label, num_samples=num_samples
     )
 
 
@@ -102,9 +96,9 @@ def summarize_one_from_summary(
     return res
 
 
-def compare_two_from_summary(
+def compare_from_summary(
     df,
-    control_label='control',
+    ref_branch_label='control',
     num_enrollments_label='num_enrollments',
     num_conversions_label='num_conversions',
     num_samples=10000
@@ -120,10 +114,10 @@ def compare_two_from_summary(
 
     Args:
         df: A pandas dataframe of integers:
-            - df.index lists the two experiment branches
+            - df.index lists the experiment branches
             - df.columns is
-                (num_enrollments_label, num_conversions_label)
-        control_label: Label for the df row containing data for the
+                `[num_enrollments_label, num_conversions_label]`
+        ref_branch_label: Label for the df row containing data for the
             control branch
         num_enrollments_label: Label for the df column containing the
             number of enrollments in each branch.
@@ -131,31 +125,33 @@ def compare_two_from_summary(
             number of conversions in each branch.
         num_samples: The number of samples to compute
 
-    Returns a pandas.Series of summary statistics for the possible
-    uplifts - see docs for `compare_two_sample_sets`
-    FIXME: update docs
+    Returns a dictionary:
+        'comparative': dictionary mapping branch names to a pandas
+            Series of summary statistics for the possible uplifts of the
+            conversion rate relative to the reference branch - see docs
+            for `compare_two_sample_sets`.
+        'individual': dictionary mapping branch names to a pandas
+            Series of summary stats for the posterior distribution over
+            the branch's conversion rate.
     """
-    assert len(df.index) == 2
-    assert control_label in df.index, "Which branch is the control?"
-
-    test_label = list(set(df.index) - {control_label})[0]
+    assert ref_branch_label in df.index, "What's the reference branch?"
 
     samples = _generate_samples(
         df, num_enrollments_label, num_conversions_label, num_samples
     )
 
-    comparative = compare_two_sample_sets(samples[test_label], samples[control_label])
-    comparative.name = num_conversions_label
-
-    individual = {
-        l: summarize_one_from_summary(
-            df.loc[l], num_enrollments_label, num_conversions_label
-        ) for l in [control_label, test_label]
-    }
-
+    # TODO: should 'comparative' and 'individual' be dfs?
     return {
-        'comparative': comparative,
-        'individual': individual
+        'comparative': {
+                b: compare_two_sample_sets(
+                    samples[b], samples[ref_branch_label]
+                ) for b in df.index.drop(ref_branch_label)
+            },
+        'individual': {
+                b: summarize_one_from_summary(
+                    df.loc[b], num_enrollments_label, num_conversions_label
+                ) for b in df.index
+            },
     }
 
 

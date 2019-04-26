@@ -61,7 +61,8 @@ def compare_two_sample_sets(focus, reference):
 
 
 def summarize_one_sample_set(data):
-    res = pd.Series(index=['0.05', 'mean', '0.95'])
-    res[['0.05', '0.95']] = np.quantile(data, [0.05, 0.95])
+    res = pd.Series(index=one_res_index)
     res['mean'] = np.mean(data)
+    quantiles = [0.005, 0.05, 0.95, 0.995]
+    res[[str(v) for v in quantiles]] = np.quantile(data, quantiles)
     return res

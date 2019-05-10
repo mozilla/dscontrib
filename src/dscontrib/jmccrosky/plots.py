@@ -10,6 +10,7 @@ from plotly.offline import plot
 
 from dscontrib.jmccrosky.usage_criteria import usage_criteria
 from dscontrib.jmccrosky.metrics import metricFunctions, metricAggregations, metricCIs
+from dscontrib.jmccrosky.metrics import metricDaysNeededPre, metricDaysNeededPost
 from dscontrib.jmccrosky.utils import calculateDateWindow, doSmoothing
 from dscontrib.jmccrosky.utils import getPandasDimensionQuery, dimensionName
 from dscontrib.jmccrosky.utils import jackknifeMeanCI, longDimensionName
@@ -36,7 +37,8 @@ def MetricPlot(
     needed_dimension_variables = list(set().union(*(d.keys() for d in dimensions)))
     buckets_list = ["{:.1f}".format(i) for i in range(jackknife_buckets)]
     date_window = calculateDateWindow(
-        plot_start_date, plot_end_date, smoothing, comparison_mode, metric
+        plot_start_date, plot_end_date, smoothing, comparison_mode,
+        metricDaysNeededPre[metric], metricDaysNeededPost[metric]
     )
     if len(date_window) == 1:
         x = date_window[0]

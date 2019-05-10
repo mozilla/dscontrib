@@ -9,19 +9,17 @@ from pyspark.sql import functions as F
 from pyspark.sql import Window
 from astropy.stats import jackknife_stats
 
-from dscontrib.jmccrosky.metrics import metricDaysNeededPre, metricDaysNeededPost
-
 
 def calculateDateWindow(
-        plot_start_date, plot_end_date, smoothing, comparison_mode, metric
+        plot_start_date, plot_end_date, smoothing, comparison_mode, pre_days, post_days
 ):
     start_window = plot_start_date - \
         pd.DateOffset(days=smoothing-1) - \
-        pd.DateOffset(days=metricDaysNeededPre[metric]) - \
+        pd.DateOffset(days=pre_days) - \
         pd.to_timedelta('1 second')           # Needed due to pyspark between() bug
     end_window = plot_end_date + \
         pd.to_timedelta('1 second') + \
-        pd.DateOffset(days=metricDaysNeededPost[metric])
+        pd.DateOffset(days=post_days)
     window = [(start_window, end_window)]
     if comparison_mode in ["YoY", "Last Year"]:
         window = window + [(

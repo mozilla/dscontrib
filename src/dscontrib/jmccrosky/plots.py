@@ -209,87 +209,86 @@ def MetricPlot(
                         [metricCIs[metric](i) for i in cur_buckets],
                 })
 
-            plot_data = pd.DataFrame(plot_data)
-            plotly_data = [
-                go.Scatter(
-                    name=(
-                        longDimensionName(dim) if comparison_mode != "Slices"
-                        else "{} as % of {}".format(
-                            longDimensionName(comparison_dimensions[0]),
-                            longDimensionName(comparison_dimensions[1])
-                        )
-                    ),
-                    x=plot_data.date,
-                    y=plot_data["value" + dimensionName(dim)],
-                    error_y=(dict(
-                        type='data',
-                        symmetric=False,
-                        array=[ci[0] for ci in plot_data["ci" + dimensionName(dim)]],
-                        arrayminus=[c[1] for c in plot_data["ci" + dimensionName(dim)]],
-                    ) if not suppress_ci else None)
+    plot_data = pd.DataFrame(plot_data)
+    plotly_data = [
+        go.Scatter(
+            name=(
+                longDimensionName(dim) if comparison_mode != "Slices"
+                else "{} as % of {}".format(
+                    longDimensionName(comparison_dimensions[0]),
+                    longDimensionName(comparison_dimensions[1])
                 )
-                for dim in dimensions] + ([
-                    go.Scatter(
-                        name=longDimensionName(dim) + " last year",
-                        x=plot_data.date,
-                        y=plot_data["value" + dimensionName(dim) + " last year"],
-                        error_y=(dict(
-                            type='data',
-                            symmetric=False,
-                            array=[
-                                ci[0] for ci in
-                                plot_data["ci" + dimensionName(dim) + " last year"]
-                            ],
-                            arrayminus=[
-                                ci[1] for ci in
-                                plot_data["ci" + dimensionName(dim) + " last year"]
-                            ],
-                        ) if not suppress_ci else None)
-                    )
-                    for dim in dimensions] if comparison_mode == "Last Year" else []
-                )
-            x_label = "Date"
-            ytitle = '{}{}'.format(
-                metric, (
-                    " (Proportion)" if "Normalize" in transformations
-                    else (" (YoY Percent Change)" if comparison_mode == "YoY" else "")
-                )
+            ),
+            x=plot_data.date,
+            y=plot_data["value" + dimensionName(dim)],
+            error_y=(dict(
+                type='data',
+                symmetric=False,
+                array=[ci[0] for ci in plot_data["ci" + dimensionName(dim)]],
+                arrayminus=[c[1] for c in plot_data["ci" + dimensionName(dim)]],
+            ) if not suppress_ci else None)
+        ) for dim in dimensions] + ([
+            go.Scatter(
+                name=longDimensionName(dim) + " last year",
+                x=plot_data.date,
+                y=plot_data["value" + dimensionName(dim) + " last year"],
+                error_y=(dict(
+                    type='data',
+                    symmetric=False,
+                    array=[
+                        ci[0] for ci in
+                        plot_data["ci" + dimensionName(dim) + " last year"]
+                    ],
+                    arrayminus=[
+                        ci[1] for ci in
+                        plot_data["ci" + dimensionName(dim) + " last year"]
+                    ],
+                ) if not suppress_ci else None)
             )
-            if comparison_mode == "Slices":
-                ytitle = "Percent of {}".format(metric)
-            if (metric in [
-                "Week 1 Retention (excluding single-day profiles)",
-                "Week 1 Retention"
-            ]) or (criterium == "New Profile"):
-                x_label = "Profile Creation Date"
-            layout = go.Layout(
-                showlegend=(True if comparison_mode == "Slices" else None),
-                autosize=force_width is None,
-                width=force_width,
-                height=force_height,
-                title=(
-                    '{} ({}) Over Time'.format(metric, criterium) + (
-                        " (Restricted to {})".format(dimensionName(dimensions[0]))
-                        if (len(dimensions) == 1 and len(dimensions[0]) != 0) else ""
-                    )
-                ),
-                xaxis=dict(
-                    title=x_label,
-                    titlefont=dict(
-                        family='Courier New, monospace',
-                        size=18,
-                        color='#7f7f7f'
-                    ),
-                    range=([x_min, x_max] if x_min is not None else None)
-                ),
-                yaxis=dict(
-                    title=ytitle,
-                    titlefont=dict(
-                        family='Courier New, monospace',
-                        size=18,
-                        color='#7f7f7f'
-                    ),
-                    range=([y_min, y_max] if y_min is not None else None)
-                )
+            for dim in dimensions] if comparison_mode == "Last Year" else []
+    )
+    x_label = "Date"
+    ytitle = '{}{}'.format(
+        metric, (
+            " (Proportion)" if "Normalize" in transformations
+            else (" (YoY Percent Change)" if comparison_mode == "YoY" else "")
+        )
+    )
+    if comparison_mode == "Slices":
+        ytitle = "Percent of {}".format(metric)
+    if (metric in [
+        "Week 1 Retention (excluding single-day profiles)",
+        "Week 1 Retention"
+    ]) or (criterium == "New Profile"):
+        x_label = "Profile Creation Date"
+    layout = go.Layout(
+        showlegend=(True if comparison_mode == "Slices" else None),
+        autosize=force_width is None,
+        width=force_width,
+        height=force_height,
+        title=(
+            '{} ({}) Over Time'.format(metric, criterium) + (
+                " (Restricted to {})".format(dimensionName(dimensions[0]))
+                if (len(dimensions) == 1 and len(dimensions[0]) != 0) else ""
             )
-            return plot({"data": plotly_data, "layout": layout}, output_type='div')
+        ),
+        xaxis=dict(
+            title=x_label,
+            titlefont=dict(
+                family='Courier New, monospace',
+                size=18,
+                color='#7f7f7f'
+            ),
+            range=([x_min, x_max] if x_min is not None else None)
+        ),
+        yaxis=dict(
+            title=ytitle,
+            titlefont=dict(
+                family='Courier New, monospace',
+                size=18,
+                color='#7f7f7f'
+            ),
+            range=([y_min, y_max] if y_min is not None else None)
+        )
+    )
+    return plot({"data": plotly_data, "layout": layout}, output_type='div')

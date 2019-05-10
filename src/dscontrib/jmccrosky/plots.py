@@ -21,6 +21,7 @@ def MetricPlot(
     plot_start_date, plot_end_date,
     criterium, dimensions, metric,
     jackknife_buckets,
+    sampling_multiplier,
     smoothing=1,
     extra_filter="TRUE",
     comparison_mode="None",
@@ -58,7 +59,7 @@ def MetricPlot(
         )
 
     data = metricFunctions[metric](
-        intermediate_table, needed_dimension_variables, feature_col
+        intermediate_table, needed_dimension_variables, feature_col, sampling_multiplier
     )
 
     if smoothing > 1:

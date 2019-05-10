@@ -202,12 +202,12 @@ def MetricPlot(
                 "ci" + dimensionName(dim) + " last year":
                     [metricCIs[metric](i) for i in old_buckets],
             })
-            if comparison_mode == "None":
-                plot_data.update({
-                    "value" + dimensionName(dim): cur_all,
-                    "ci" + dimensionName(dim):
-                        [metricCIs[metric](i) for i in cur_buckets],
-                })
+        if comparison_mode == "None":
+            plot_data.update({
+                "value" + dimensionName(dim): cur_all,
+                "ci" + dimensionName(dim):
+                    [metricCIs[metric](i) for i in cur_buckets],
+            })
 
     plot_data = pd.DataFrame(plot_data)
     plotly_data = [

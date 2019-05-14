@@ -77,9 +77,9 @@ def jackknifeMeanCI(data, string_mode=False):
 def getPandasDimensionQuery(dimensions):
     if len(dimensions) == 0:
         return ""
-        return " and " + " and ".join(["{}=='{}'".format(
-            d, dimensions[d]) for d in dimensions]
-        )
+    return " and " + " and ".join(["{}=='{}'".format(
+        d, dimensions[d]) for d in dimensions]
+    )
 
 
 def dimensionName(dimension):

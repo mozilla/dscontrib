@@ -81,9 +81,9 @@ def MetricPlot(
         ]
     else:
         dates = pd.date_range(plot_start_date, plot_end_date)
-        plot_data = {
-            "date": dates,
-        }
+    plot_data = {
+        "date": dates,
+    }
 
     if comparison_mode == "Slices":
         comparison_dimensions = dimensions
@@ -145,14 +145,14 @@ def MetricPlot(
             else:
                 def date_offset(x):
                     return x - pd.DateOffset(years=1)
-                old_all = [metricAggregations[metric](old_data.query(
-                    "bucket=='ALL' and {}==@d".format(date_var) +
-                    getPandasDimensionQuery(dim))[feature_col]
-                ) for d in (date_offset(dates))]
-                old_buckets = [[metricAggregations[metric](old_data.query(
-                    "bucket==@i and {}==@d".format(date_var) +
-                    getPandasDimensionQuery(dim))[feature_col]
-                ) for i in buckets_list] for d in (date_offset(dates))]
+            old_all = [metricAggregations[metric](old_data.query(
+                "bucket=='ALL' and {}==@d".format(date_var) +
+                getPandasDimensionQuery(dim))[feature_col]
+            ) for d in (date_offset(dates))]
+            old_buckets = [[metricAggregations[metric](old_data.query(
+                "bucket==@i and {}==@d".format(date_var) +
+                getPandasDimensionQuery(dim))[feature_col]
+            ) for i in buckets_list] for d in (date_offset(dates))]
 
         if "Normalize" in transformations:
             total_all = np.sum(cur_all)

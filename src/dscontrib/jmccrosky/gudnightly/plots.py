@@ -8,12 +8,13 @@ from pyspark.sql.functions import col
 import plotly.graph_objs as go
 from plotly.offline import plot
 
-from dscontrib.jmccrosky.usage_criteria import usage_criteria
-from dscontrib.jmccrosky.metrics import metricFunctions, metricAggregations, metricCIs
-from dscontrib.jmccrosky.metrics import metricDaysNeededPre, metricDaysNeededPost
-from dscontrib.jmccrosky.utils import calculateDateWindow, doSmoothing
-from dscontrib.jmccrosky.utils import getPandasDimensionQuery, dimensionName
-from dscontrib.jmccrosky.utils import jackknifeMeanCI, longDimensionName
+from dscontrib.jmccrosky.gudnightly.usage_criteria import usage_criteria
+from dscontrib.jmccrosky.gudnightly.metrics import metricFunctions, metricAggregations
+from dscontrib.jmccrosky.gudnightly.metrics import metricDaysNeededPre
+from dscontrib.jmccrosky.gudnightly.metrics import metricCIs, metricDaysNeededPost
+from dscontrib.jmccrosky.gudnightly.utils import calculateDateWindow, doSmoothing
+from dscontrib.jmccrosky.gudnightly.utils import getPandasDimensionQuery, dimensionName
+from dscontrib.jmccrosky.gudnightly.utils import jackknifeMeanCI, longDimensionName
 
 
 def MetricPlot(

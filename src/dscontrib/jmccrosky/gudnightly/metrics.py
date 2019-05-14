@@ -6,7 +6,7 @@ from pyspark.sql import functions as F
 from pyspark.sql.functions import col, lit
 from pyspark.sql import Window
 
-from dscontrib.jmccrosky.utils import jackknifeCountCI, jackknifeMeanCI
+from dscontrib.jmccrosky.gudnightly.utils import jackknifeCountCI, jackknifeMeanCI
 
 
 def metricDAU(data, needed_dimension_variables, feature_col, sampling_multiplier):

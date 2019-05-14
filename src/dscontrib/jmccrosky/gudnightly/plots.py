@@ -94,8 +94,9 @@ def MetricPlot(
             date_var = "day_of_week"
         else:
             date_var = "date"
-            cur_data = \
-                data[data["date"].isin(pd.date_range(plot_start_date, plot_end_date))]
+        cur_data = data[
+            data["date"].isin(pd.date_range(plot_start_date, plot_end_date))
+        ]
         if comparison_mode == "Slices":
             cur_all1 = [metricAggregations[metric](
                 cur_data.query(
@@ -165,17 +166,17 @@ def MetricPlot(
                     for i in range(len(buckets_list))
                 ] for d in range(len(dates))
             ]
-        if comparison_mode != "None":
-            total_all = np.sum(old_all)
-            total_buckets = [
-                np.sum([old_buckets[d][i] for d in range(len(dates))])
-                for i in range(len(buckets_list))
-            ]
-            old_all = [v / float(total_all) for v in old_all]
-            old_buckets = [[
-                old_buckets[d][i] / float(total_buckets[i])
-                for i in range(len(buckets_list))
-            ] for d in range(len(dates))]
+            if comparison_mode != "None":
+                total_all = np.sum(old_all)
+                total_buckets = [
+                    np.sum([old_buckets[d][i] for d in range(len(dates))])
+                    for i in range(len(buckets_list))
+                ]
+                old_all = [v / float(total_all) for v in old_all]
+                old_buckets = [[
+                    old_buckets[d][i] / float(total_buckets[i])
+                    for i in range(len(buckets_list))
+                ] for d in range(len(dates))]
         if comparison_mode == "YoY":
             plot_data.update({
                 "value" + dimensionName(dim):

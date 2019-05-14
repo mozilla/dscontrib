@@ -2,11 +2,11 @@
 
 This is primarily a prototype for development of the Mozilla Growth and Usage Dashboard (GUD), but I have found it useful for some analysis, so have decided to make it available to others in case you find it useful too.
 
-At it's core, it supports plotting of growth metrics across a range of usage criteria, metrics, and slices.
+At its core, it supports plotting of growth metrics across a range of usage criteria, metrics, and slices.
 
 Compared to the real GUD, it has some disadvantages:
 
- - It is very, very slow
+ - It is slow (depending on the state of the cluster, it may be "slightly annoying" slow or might be "work on something else while it runs" slow)
  - I offer no support nor guarantee that it works
  - Although some validation of the metrics it produces has been performed, it should not be considered an authoritarive source of truth
 

@@ -64,11 +64,7 @@ def MetricPlot(
     )
 
     if smoothing > 1:
-        data = doSmoothing(
-            data, feature_col,
-            " ".join([", {}".format(k) for k in needed_dimension_variables]),
-            smoothing - 1
-        )
+        data = doSmoothing(data, feature_col, needed_dimension_variables, smoothing - 1)
 
     data = data.filter(
         col('date').between(pd.to_datetime("19000101"), pd.to_datetime("21000101"))

@@ -31,7 +31,7 @@ def calculateDateWindow(
 
 def doSmoothing(data, usage_criteria, dimension_cols, smoothing_lookback):
     windowSpec = Window.partitionBy(
-        [data.bucket]
+        [data.bucket] + dimension_cols
     ).orderBy(
         data.date
     ).rowsBetween(

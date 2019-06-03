@@ -32,7 +32,7 @@ def GetHolidays(years):
     return easters
 
 
-def setupModels():
+def setupModels(years):
     models = {}
     models["desktop"] = Prophet(
         yearly_seasonality=20,
@@ -40,7 +40,7 @@ def setupModels():
         seasonality_mode='multiplicative',
         changepoint_prior_scale=0.008,
         seasonality_prior_scale=0.20,
-        holidays=GetHolidays()
+        holidays=GetHolidays(years)
     )
     models["nondesktop"] = Prophet()
     models["fxa"] = Prophet()

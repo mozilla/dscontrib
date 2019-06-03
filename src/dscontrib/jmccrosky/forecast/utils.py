@@ -47,7 +47,7 @@ def resetOuputTable(bigquery_client, project, dataset, table_name):
 
 def writeForecasts(bigquery_client, table, model_date, forecast_end, data):
     minYear = np.min([data[k].ds.min() for k in data]).year
-    maxYear = forecast_end.years
+    maxYear = forecast_end.year
     years = range(minYear, maxYear + 1)
     models = setupModels(years)
     forecast_start = model_date + timedelta(days=1)

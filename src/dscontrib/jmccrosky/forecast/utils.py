@@ -18,7 +18,7 @@ def calcMre(true, predicted):
 
 
 # Get most recent date in table
-def getLatest(bqClient, project, dataset, table, field):
+def getLatestDate(bqClient, project, dataset, table, field):
     query = '''
         SELECT
             MAX({field}) as date

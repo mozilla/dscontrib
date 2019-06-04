@@ -44,4 +44,7 @@ def setupModels(years):
     )
     models["nondesktop_global"] = Prophet()
     models["fxa_global"] = Prophet()
+    models["desktop_tier1"] = Prophet()
+    models["nondesktop_tier1"] = Prophet()
+    models["fxa_tier1"] = Prophet()
     return models

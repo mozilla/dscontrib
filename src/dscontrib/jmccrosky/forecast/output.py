@@ -43,7 +43,7 @@ def writeForecasts(bigquery_client, table, model_date, forecast_end, data):
     models = setupModels(years)
     forecast_start = model_date + timedelta(days=1)
     forecast_period = pd.DataFrame({'ds': pd.date_range(forecast_start, forecast_end)})
-    forecast_period['ds'] = forecast_period['ds'].dt.date
+    forecast_period['ds']
 
     for m in data:
         models[m].fit(data[m].query("ds <= @model_date"))
@@ -53,7 +53,7 @@ def writeForecasts(bigquery_client, table, model_date, forecast_end, data):
         output_data = {
             "asofdate": model_date,
             "datasource": m,
-            "date": forecast_period.ds,
+            "date": forecast_period['ds'].dt.date,
             "type": "forecast",
             "mau": np.mean(forecastSamples['yhat'], axis=1),
             "low90": np.nanpercentile(forecastSamples['yhat'], 5, axis=1),

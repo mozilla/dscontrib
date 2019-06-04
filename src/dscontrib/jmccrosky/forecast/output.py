@@ -27,6 +27,9 @@ def resetOuputTable(bigquery_client, project, dataset, table_name):
         bigquery.SchemaField('mau', 'FLOAT', mode='REQUIRED'),
         bigquery.SchemaField('low90', 'FLOAT', mode='REQUIRED'),
         bigquery.SchemaField('high90', 'FLOAT', mode='REQUIRED'),
+    ] + [
+        bigquery.SchemaField('p{}'.format(q), 'FLOAT', mode='REQUIRED')
+        for q in range(10, 100, 10)
     ]
     table = bigquery.Table(table_ref, schema=schema)
     table = bigquery_client.create_table(table)
@@ -44,18 +47,24 @@ def writeForecasts(bigquery_client, table, model_date, forecast_end, data):
 
     for m in data:
         models[m].fit(data[m].query("ds <= @model_date"))
-        forecast = models[m].predict(forecast_period)
-        output_data = pd.DataFrame({
+        forecastSamples = models[m].sample_posterior_predictive(
+            models[m].setup_dataframe(forecast_period)
+        )
+        output_data = {
             "asofdate": model_date,
             "datasource": m,
             "date": forecast_period.ds,
             "type": "forecast",
-            "mau": forecast.yhat,
-            "low90": forecast.yhat_lower,
-            "high90": forecast.yhat_upper,
+            "mau": np.mean(forecastSamples['yhat'], axis=1),
+            "low90": np.nanpercentile(forecastSamples['yhat'], 5, axis=1),
+            "high90": np.nanpercentile(forecastSamples['yhat'], 95, axis=1),
+        }
+        output_data.update({
+            "p{}".format(q): np.nanpercentile(forecastSamples['yhat'], q, axis=1)
+            for q in range(10, 100, 10)
         })
         errors = bigquery_client.insert_rows(
             table,
-            list(output_data.itertuples(index=False, name=None))
+            list(pd.DataFrame(output_data).itertuples(index=False, name=None))
         )
         assert errors == []

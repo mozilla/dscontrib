@@ -2,6 +2,8 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+import pandas as pd
+
 
 _queries = {
     "desktop": '''
@@ -57,4 +59,6 @@ def getKpiData(bqClient):
         ].rename(
             index=str, columns={"date": "ds", "tier1_mau": "y"}
         )
+    for k in data:
+        data[k]['ds'] = pd.to_datetime(data[k]['ds']).dt.date
     return data

@@ -40,14 +40,15 @@ def writeForecasts(bigquery_client, table, model_date, forecast_end, data):
     models = setupModels(years)
     forecast_start = model_date + timedelta(days=1)
     forecast_period = pd.DataFrame({'ds': pd.date_range(forecast_start, forecast_end)})
+    forecast_period['ds'] = forecast_period['ds'].dt.date
 
     for m in data:
         models[m].fit(data[m].query("ds <= @model_date"))
         forecast = models[m].predict(forecast_period)
         output_data = pd.DataFrame({
-            "asofdate": model_date.date(),
+            "asofdate": model_date,
             "datasource": m,
-            "date": forecast_period.ds.dt.date,
+            "date": forecast_period.ds,
             "type": "forecast",
             "mau": forecast.yhat,
             "low90": forecast.yhat_lower,

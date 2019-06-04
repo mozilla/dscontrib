@@ -15,3 +15,14 @@ def calcMape(true, predicted):
 def calcMre(true, predicted):
     mask = true != 0
     return ((true - predicted)/true)[mask].mean() * 100
+
+
+# Get most recent date in table
+def getLatestDate(bqClient, project, dataset, table, field):
+    query = '''
+        SELECT
+            MAX({field}) as date
+        FROM
+            `{project}.{dataset}.{table}`
+    '''.format(project=project, dataset=dataset, table=table, field=field)
+    return bqClient.query(query).to_dataframe()['date'][0]

@@ -2,7 +2,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-import dscontrib.flawrence.abtest_stats as flabs
+import dscontrib.flawrence.bayesian_stats.binary as flbsbin
+import dscontrib.flawrence.bayesian_stats.bayesian_bootstrap as flbsbb
+import dscontrib.flawrence.bayesian_stats.survival_func as flbssf
 
 
 def plot_ts(t_df, col_label, stats_model, ref_branch_label='control', sc=None):
@@ -39,7 +41,7 @@ def plot_ts(t_df, col_label, stats_model, ref_branch_label='control', sc=None):
 
 
 def plot_survival(df, col_label, ref_branch_label='control', thresholds=None):
-    data = crunch_nums_survival(df, col_label, ref_branch_label, thresholds)
+    data = flbssf.compare_branches(df, col_label, ref_branch_label, thresholds)
 
     fig, (ax1, ax2) = plt.subplots(nrows=2, sharex=True, figsize=(6, 10))
 
@@ -218,10 +220,10 @@ def crunch_nums_ts(ts, col_label, stats_model, ref_branch_label='control', sc=No
     # TODO: this really smells like a map then a zip?
     for k, v in ts.items():
         if stats_model == 'beta':
-            bla = flabs.beta.compare(v, col_label, ref_branch_label=ref_branch_label)
+            bla = flbsbin.compare_branches(v, col_label, ref_branch_label=ref_branch_label)
         elif stats_model == 'bootstrap':
             assert sc is not None
-            bla = flabs.bootstrap.compare(sc, v, col_label, ref_branch_label=ref_branch_label, filter_outliers=0.9999)
+            bla = flbsbb.compare_branches(sc, v, col_label, ref_branch_label=ref_branch_label, filter_outliers=0.9999)
         else:
             raise NotImplementedError
 
@@ -229,43 +231,6 @@ def crunch_nums_ts(ts, col_label, stats_model, ref_branch_label='control', sc=No
             res['comparative'][branch][k] = data
         for branch, data in bla['individual'].items():
             res['individual'][branch][k] = data
-
-    return res
-
-
-def crunch_nums_survival(df, col_label, ref_branch_label='control', thresholds=None):
-    """Return values on the CDF for df[col_label] for each branch"""
-    if not thresholds:
-        thresholds = get_thresholds(df[col_label])
-
-    res = {
-        'comparative': {
-            b: {
-                x: None for x in thresholds
-            } for b in df.branch.unique() if b != ref_branch_label
-        },
-        'individual': {
-            b: {
-                x: None for x in thresholds
-            } for b in df.branch.unique()
-        }
-    }
-
-    for x in thresholds:
-        assert 'tmp_crunch_nums' not in df.columns
-        try:
-            # Sorry for mutating the input inplace
-            df['tmp_crunch_nums'] = df[col_label] > x
-            bla = flabs.beta.compare(
-                df, 'tmp_crunch_nums', ref_branch_label=ref_branch_label
-            )
-        finally:
-            df.drop('tmp_crunch_nums', axis='columns', inplace=True)
-
-        for branch, data in bla['comparative'].items():
-            res['comparative'][branch][x] = data
-        for branch, data in bla['individual'].items():
-            res['individual'][branch][x] = data
 
     return res
 

@@ -52,6 +52,7 @@ def plot_survival(df, col_label, ref_branch_label='control', thresholds=None):
     ax1.set_title(
         'Survival fn: Fraction of users with {} > x'.format(col_label)
     )
+    ax1.set_ylim((0, 1))
     ax1.set_ylabel('Fraction of users')
     ax1.legend()
     ax2.set_xlabel(col_label)

@@ -181,8 +181,12 @@ def plot_uplifts_scatter(ax, branch_x_stats):
 
 def _plot_uplifts_scatter(ax, x_df):
     df = pd.DataFrame(x_df, columns=sorted(x_df.keys())).T
-    yerr_inner = (df[['rel_uplift_0.05', 'rel_uplift_0.95']].T - df['rel_uplift_exp']).abs().values
-    yerr_outer = (df[['rel_uplift_0.005', 'rel_uplift_0.995']].T - df['rel_uplift_exp']).abs().values
+    yerr_inner = (
+        df[['rel_uplift_0.05', 'rel_uplift_0.95']].T - df['rel_uplift_exp']
+    ).abs().values
+    yerr_outer = (
+        df[['rel_uplift_0.005', 'rel_uplift_0.995']].T - df['rel_uplift_exp']
+    ).abs().values
     line = ax.errorbar(
         df.index, df['rel_uplift_exp'], yerr=yerr_inner,
         fmt='.', elinewidth=2, capsize=0,
@@ -220,10 +224,15 @@ def crunch_nums_ts(ts, col_label, stats_model, ref_branch_label='control', sc=No
     # TODO: this really smells like a map then a zip?
     for k, v in ts.items():
         if stats_model == 'beta':
-            bla = flbsbin.compare_branches(v, col_label, ref_branch_label=ref_branch_label)
+            bla = flbsbin.compare_branches(
+                v, col_label, ref_branch_label=ref_branch_label
+            )
         elif stats_model == 'bootstrap':
             assert sc is not None
-            bla = flbsbb.compare_branches(sc, v, col_label, ref_branch_label=ref_branch_label, filter_outliers=0.9999)
+            bla = flbsbb.compare_branches(
+                sc, v, col_label,
+                ref_branch_label=ref_branch_label, filter_outliers=0.9999
+            )
         else:
             raise NotImplementedError
 

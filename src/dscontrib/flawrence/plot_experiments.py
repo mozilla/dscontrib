@@ -88,18 +88,16 @@ def get_thresholds(col, max_num_thresholds=101):
 
 
 def plot_means_line(ax, branch_x_stats, ref_branch_label='control'):
-    # TODO: reorder arguments so `ax` is first
     for branch_label in sort_branch_list(branch_x_stats.keys(), ref_branch_label):
-        _plot_means_line(branch_x_stats[branch_label], ax, branch_label)
+        _plot_means_line(ax, branch_x_stats[branch_label], branch_label)
 
 
 def plot_means_scatter(ax, branch_x_stats, ref_branch_label='control'):
     for branch_label in sort_branch_list(branch_x_stats.keys(), ref_branch_label):
-        _plot_means_scatter(branch_x_stats[branch_label], ax, branch_label)
+        _plot_means_scatter(ax, branch_x_stats[branch_label], branch_label)
 
 
-def _plot_means_line(ax, x_stats, branch_label):
-    df = pd.DataFrame(x_stats, columns=sorted(x_stats.keys())).T
+def _plot_means_line(ax, df, branch_label):
     line = ax.plot(df.index, df['mean'], label=branch_label)[0]
     col = line.get_color()
     ax.fill_between(
@@ -118,9 +116,8 @@ def _plot_means_line(ax, x_stats, branch_label):
     )
 
 
-def _plot_means_scatter(ax, x_stats, branch_label):
+def _plot_means_scatter(ax, df, branch_label):
     # TODO: add an x offset between branches, and caps for matplotlib 3
-    df = pd.DataFrame(x_stats, columns=sorted(x_stats.keys())).T
     yerr_inner = (df[['0.05', '0.95']].T - df['mean']).abs().values
     yerr_outer = (df[['0.005', '0.995']].T - df['mean']).abs().values
     line = ax.errorbar(
@@ -137,7 +134,7 @@ def _plot_means_scatter(ax, x_stats, branch_label):
 
 def plot_uplifts_line(ax, branch_x_stats):
     for branch_label in sorted(branch_x_stats.keys()):
-        _plot_uplifts_line(branch_x_stats[branch_label], ax)
+        _plot_uplifts_line(ax, branch_x_stats[branch_label])
 
     xmin, xmax = ax.get_xlim()
     ax.plot(
@@ -147,8 +144,7 @@ def plot_uplifts_line(ax, branch_x_stats):
     )
 
 
-def _plot_uplifts_line(ax, x_df):
-    df = pd.DataFrame(x_df, columns=sorted(x_df.keys())).T
+def _plot_uplifts_line(ax, df):
     line = ax.plot(df.index, df.rel_uplift_exp)[0]
     col = line.get_color()
     ax.fill_between(
@@ -169,7 +165,7 @@ def _plot_uplifts_line(ax, x_df):
 
 def plot_uplifts_scatter(ax, branch_x_stats):
     for branch_label in sorted(branch_x_stats.keys()):
-        _plot_uplifts_scatter(branch_x_stats[branch_label], ax)
+        _plot_uplifts_scatter(ax, branch_x_stats[branch_label])
 
     xmin, xmax = ax.get_xlim()
     ax.plot(

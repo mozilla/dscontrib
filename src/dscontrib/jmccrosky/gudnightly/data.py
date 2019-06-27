@@ -41,7 +41,7 @@ def createDataFile(
             _COL_ID.alias("id"),
             _DATE_PARSED.alias("date"),
             # TODO: Use MD5 instead of CRC32
-            ((F.crc32(_COL_ID) / 100) % jackknife_buckets).alias("bucket"),
+            (F.floor(F.crc32(_COL_ID) / 100) % jackknife_buckets).alias("bucket"),
             lit(1).alias("is_active"),
             F.when(
                 _COL_URI_COUNT >= _NUM_ADAU_THRESHOLD, 1

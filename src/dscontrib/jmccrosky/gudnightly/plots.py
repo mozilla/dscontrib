@@ -37,7 +37,7 @@ def MetricPlot(
 ):
     feature_col = usage_criteria[criterium]
     needed_dimension_variables = list(set().union(*(d.keys() for d in dimensions)))
-    buckets_list = ["{:.1f}".format(i) for i in range(jackknife_buckets)]
+    buckets_list = ["{:d}".format(i) for i in range(jackknife_buckets)]
     date_window = calculateDateWindow(
         plot_start_date, plot_end_date, smoothing, comparison_mode,
         metricDaysNeededPre[metric], metricDaysNeededPost[metric]

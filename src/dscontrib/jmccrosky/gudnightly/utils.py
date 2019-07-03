@@ -83,7 +83,7 @@ def getPandasDimensionQuery(dimensions):
 
 
 def dimensionName(dimension):
-    return "|".join([dimension[d] for d in dimension])
+    return "|".join(["{}".format(dimension[d]) for d in dimension])
 
 
 def longDimensionName(dimension):

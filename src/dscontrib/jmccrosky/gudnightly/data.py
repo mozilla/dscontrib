@@ -113,6 +113,24 @@ def createDataFile(
         {"single_day_profile": "0"}
     )
 
+    ppi_profiles = spark_instance.table("main_summary").select(
+      col("client_id").alias("id"),
+      lit(1).alias("ppi")
+    ).filter(
+        '''submission_date_s3 >= '20190121'
+        AND scalar_parent_startup_profile_selection_reason IN (
+            'firstrun-skipped-default', 'restart-skipped-default'
+        )'''
+    )
+
+    feature_data = feature_data.alias("fd").join(
+        ppi_profiles.alias("ppip"),
+        "id",
+        "left"
+    ).fillna(
+        {"ppi": 0}
+    )
+
     feature_data.write.partitionBy("date").mode('overwrite').parquet(output_path)
 
 

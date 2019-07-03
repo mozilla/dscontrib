@@ -195,7 +195,7 @@ def metricRetention(data, needed_dimension_variables, feature_col, sampling_mult
         ["date", "id", "bucket"] + needed_dimension_variables
     )
     windowSpec = Window.partitionBy(
-        [pcd_table.id]
+        [pcd_table.id] + needed_dimension_variables
     ).orderBy(
         pcd_table.date
     ).rowsBetween(

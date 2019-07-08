@@ -33,7 +33,8 @@ def MetricPlot(
     x_max=None,
     y_min=None,
     y_max=None,
-    suppress_ci=False
+    suppress_ci=False,
+    debug="No"
 ):
     feature_col = usage_criteria[criterium]
     needed_dimension_variables = list(set().union(*(d.keys() for d in dimensions)))
@@ -70,6 +71,8 @@ def MetricPlot(
         col('date').between(pd.to_datetime("19000101"), pd.to_datetime("21000101"))
     ).toPandas()
     data['date'] = pd.to_datetime(data.date)
+    if debug == "data":
+        return data
 
     if "Day Of Week" in transformations:
         dates = [
@@ -208,6 +211,10 @@ def MetricPlot(
             })
 
     plot_data = pd.DataFrame(plot_data)
+
+    if debug == "plot_data":
+        return plot_data
+
     plotly_data = [
         go.Scatter(
             name=(

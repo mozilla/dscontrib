@@ -145,19 +145,19 @@ def plot_uplifts_line(ax, branch_x_stats):
 
 
 def _plot_uplifts_line(ax, df):
-    line = ax.plot(df.index, df.rel_uplift_exp)[0]
+    line = ax.plot(df.index, df[('rel_uplift', 'exp')])[0]
     col = line.get_color()
     ax.fill_between(
         df.index,
-        df['rel_uplift_0.005'],
-        df['rel_uplift_0.995'],
+        df[('rel_uplift', '0.005')],
+        df[('rel_uplift', '0.995')],
         color=col,
         alpha=0.05
     )
     ax.fill_between(
         df.index,
-        df['rel_uplift_0.025'],
-        df['rel_uplift_0.975'],
+        df[('rel_uplift', '0.025')],
+        df[('rel_uplift', '0.975')],
         color=col,
         alpha=0.05
     )
@@ -178,18 +178,18 @@ def plot_uplifts_scatter(ax, branch_x_stats):
 def _plot_uplifts_scatter(ax, x_df):
     df = pd.DataFrame(x_df, columns=sorted(x_df.keys())).T
     yerr_inner = (
-        df[['rel_uplift_0.025', 'rel_uplift_0.975']].T - df['rel_uplift_exp']
+        df[[('rel_uplift', '0.025'), ('rel_uplift', '0.975')]].T - df[('rel_uplift', 'exp')]
     ).abs().values
     yerr_outer = (
-        df[['rel_uplift_0.005', 'rel_uplift_0.995']].T - df['rel_uplift_exp']
+        df[[('rel_uplift', '0.005'), ('rel_uplift', '0.995')]].T - df[('rel_uplift', 'exp')]
     ).abs().values
     line = ax.errorbar(
-        df.index, df['rel_uplift_exp'], yerr=yerr_inner,
+        df.index, df[('rel_uplift', 'exp')], yerr=yerr_inner,
         fmt='.', elinewidth=2, capsize=0,
     )[0]
     col = line.get_color()
     ax.errorbar(
-        df.index, df['rel_uplift_exp'], yerr=yerr_outer,
+        df.index, df[('rel_uplift', 'exp')], yerr=yerr_outer,
         fmt='.', color=col, ecolor=col, label=None
     )
     # # matplotlib 1 :(

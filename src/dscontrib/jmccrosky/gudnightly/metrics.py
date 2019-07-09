@@ -184,7 +184,10 @@ def metricDaysPerWeek(
     return joined_intermediate
 
 
-def metricRetention(data, needed_dimension_variables, feature_col, sampling_multiplier):
+def metricRetention(
+    data, needed_dimension_variables, feature_col, sampling_multiplier,
+    activated=False
+):
     activity_data = data.filter(
         col(feature_col) > 0
     ).select(
@@ -205,6 +208,23 @@ def metricRetention(data, needed_dimension_variables, feature_col, sampling_mult
         pcd_table = pcd_table.withColumn(v, F.last(v, True).over(windowSpec))
     pcd_table = pcd_table.filter(
         col("new_profile") == 1
+    )
+
+    pcd_table = pcd_table.alias("pcd_t").join(
+        activity_data.alias("i_t"),
+        (col('pcd_t.id') == col('i_t.id')) &
+        (col('i_t.date') >= F.date_add(col('pcd_t.date'), 1)) &
+        (col('i_t.date') <= F.date_add(col('pcd_t.date'), 6)),
+        "inner"
+    ).filter(
+        col("i_t." + feature_col) > 0
+    ).dropDuplicates(
+        ['id']
+    ).select(
+        [
+            col('pcd_t.{}'.format(c))
+            for c in ['id', 'bucket', "date"] + needed_dimension_variables
+        ]
     )
 
     intermediate_table3 = pcd_table.alias("pcd_t").join(
@@ -264,64 +284,77 @@ def metricRetention(data, needed_dimension_variables, feature_col, sampling_mult
     return joined_intermediate
 
 
+def metricActivatedRetention(
+    data, needed_dimension_variables, feature_col, sampling_multiplier
+):
+    return metricRetention(
+        data, needed_dimension_variables, feature_col, sampling_multiplier, True
+    )
+
+
 metricFunctions = {
-  "DAU": metricDAU,
-  "MAU": metricMAU,
-  # "MAU31": metricMAU31,
-  # "MAU27": metricMAU27,
-  "Days Per Week": metricDaysPerWeek,
-  "Week 1 Retention": metricRetention,
-  # "Week 1 Retention (excluding single-day profiles)": metricRealishRetention,
+    "DAU": metricDAU,
+    "MAU": metricMAU,
+    # "MAU31": metricMAU31,
+    # "MAU27": metricMAU27,
+    "Days Per Week": metricDaysPerWeek,
+    "Week 1 Retention": metricRetention,
+    "Week 1 Activated Retention": metricActivatedRetention,
+    # "Week 1 Retention (excluding single-day profiles)": metricRealishRetention,
 }
 
 metricAggregations = {
-  "DAU": lambda x: x.sum(),
-  "MAU": lambda x: x.sum(),
-  # "MAU31": lambda x: x.sum(),
-  # "MAU27": lambda x: x.sum(),
-  "Days Per Week": lambda x: x.sum() if len(x) == 1 else 0,
-  "Week 1 Retention": lambda x: x.sum() if len(x) == 1 else 0,
-  # "Week 1 Retention (excluding single-day profiles)":
-  #      lambda x: x.sum() if len(x)==1 else 0,
+    "DAU": lambda x: x.sum(),
+    "MAU": lambda x: x.sum(),
+    # "MAU31": lambda x: x.sum(),
+    # "MAU27": lambda x: x.sum(),
+    "Days Per Week": lambda x: x.sum() if len(x) == 1 else 0,
+    "Week 1 Retention": lambda x: x.sum() if len(x) == 1 else 0,
+    "Week 1 Activated Retention": lambda x: x.sum() if len(x) == 1 else 0,
+    # "Week 1 Retention (excluding single-day profiles)":
+    #      lambda x: x.sum() if len(x)==1 else 0,
 }
 
 metricDaysNeededPre = {
-  "DAU": 0,
-  "MAU": 27,
-  # "MAU31": 30,
-  # "MAU27": 26,
-  "Days Per Week": 6,
-  "Week 1 Retention": 0,
-  # "Week 1 Retention (excluding single-day profiles)": 0,
+    "DAU": 0,
+    "MAU": 27,
+    # "MAU31": 30,
+    # "MAU27": 26,
+    "Days Per Week": 6,
+    "Week 1 Retention": 0,
+    "Week 1 Activated Retention": 0,
+    # "Week 1 Retention (excluding single-day profiles)": 0,
 }
 
 metricDaysNeededPost = {
-  "DAU": 0,
-  "MAU": 0,
-  # "MAU31": 0,
-  # "MAU27": 0,
-  "Days Per Week": 0,
-  "Week 1 Retention": 13,
-  # "Week 1 Retention (excluding single-day profiles)": 13,
+    "DAU": 0,
+    "MAU": 0,
+    # "MAU31": 0,
+    # "MAU27": 0,
+    "Days Per Week": 0,
+    "Week 1 Retention": 13,
+    "Week 1 Activated Retention": 13,
+    # "Week 1 Retention (excluding single-day profiles)": 13,
 }
 
 metricCIs = {
-  "DAU": jackknifeCountCI,
-  # "DAU-alt": poissonCI,
-  "MAU": jackknifeCountCI,
-  # "MAU31": jackknifeCountCI,
-  # "MAU27": jackknifeCountCI,
-  # "Retention-debug": jackknifeCountCI,
-  "Days Per Week": jackknifeMeanCI,
-  "Week 1 Retention": jackknifeMeanCI,
-  # "Week 1 Retention-alt": binomialCI,
-  # "Week 1 Retention (excluding single-day profiles)": jackknifeMeanCI,
-  # "Retention-filter": jackknifeMeanCI,
-  # "WAU": jackknifeCountCI,
+    "DAU": jackknifeCountCI,
+    # "DAU-alt": poissonCI,
+    "MAU": jackknifeCountCI,
+    # "MAU31": jackknifeCountCI,
+    # "MAU27": jackknifeCountCI,
+    # "Retention-debug": jackknifeCountCI,
+    "Days Per Week": jackknifeMeanCI,
+    "Week 1 Retention": jackknifeMeanCI,
+    "Week 1 Activated Retention": jackknifeMeanCI,
+    # "Week 1 Retention-alt": binomialCI,
+    # "Week 1 Retention (excluding single-day profiles)": jackknifeMeanCI,
+    # "Retention-filter": jackknifeMeanCI,
+    # "WAU": jackknifeCountCI,
 }
 
 metricHTs = {
-  # "DAU": permutationTestCount,
-  # "Days Per Week": permutationTestMean,
-  # "MAU": permutationTestCount,
+    # "DAU": permutationTestCount,
+    # "Days Per Week": permutationTestMean,
+    # "MAU": permutationTestCount,
 }

@@ -109,8 +109,8 @@ def _plot_means_line(ax, df, branch_label):
     )
     ax.fill_between(
         df.index,
-        df['0.05'],
-        df['0.95'],
+        df['0.025'],
+        df['0.975'],
         color=col,
         alpha=0.05
     )
@@ -118,7 +118,7 @@ def _plot_means_line(ax, df, branch_label):
 
 def _plot_means_scatter(ax, df, branch_label):
     # TODO: add an x offset between branches, and caps for matplotlib 3
-    yerr_inner = (df[['0.05', '0.95']].T - df['mean']).abs().values
+    yerr_inner = (df[['0.025', '0.975']].T - df['mean']).abs().values
     yerr_outer = (df[['0.005', '0.995']].T - df['mean']).abs().values
     line = ax.errorbar(
         df.index, df['mean'], yerr=yerr_inner,
@@ -156,8 +156,8 @@ def _plot_uplifts_line(ax, df):
     )
     ax.fill_between(
         df.index,
-        df['rel_uplift_0.05'],
-        df['rel_uplift_0.95'],
+        df['rel_uplift_0.025'],
+        df['rel_uplift_0.975'],
         color=col,
         alpha=0.05
     )
@@ -178,7 +178,7 @@ def plot_uplifts_scatter(ax, branch_x_stats):
 def _plot_uplifts_scatter(ax, x_df):
     df = pd.DataFrame(x_df, columns=sorted(x_df.keys())).T
     yerr_inner = (
-        df[['rel_uplift_0.05', 'rel_uplift_0.95']].T - df['rel_uplift_exp']
+        df[['rel_uplift_0.025', 'rel_uplift_0.975']].T - df['rel_uplift_exp']
     ).abs().values
     yerr_outer = (
         df[['rel_uplift_0.005', 'rel_uplift_0.995']].T - df['rel_uplift_exp']

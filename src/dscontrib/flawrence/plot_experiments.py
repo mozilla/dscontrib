@@ -178,10 +178,12 @@ def plot_uplifts_scatter(ax, branch_x_stats):
 def _plot_uplifts_scatter(ax, x_df):
     df = pd.DataFrame(x_df, columns=sorted(x_df.keys())).T
     yerr_inner = (
-        df[[('rel_uplift', '0.025'), ('rel_uplift', '0.975')]].T - df[('rel_uplift', 'exp')]
+        df[[('rel_uplift', '0.025'), ('rel_uplift', '0.975')]].T
+        - df[('rel_uplift', 'exp')]
     ).abs().values
     yerr_outer = (
-        df[[('rel_uplift', '0.005'), ('rel_uplift', '0.995')]].T - df[('rel_uplift', 'exp')]
+        df[[('rel_uplift', '0.005'), ('rel_uplift', '0.995')]].T
+        - df[('rel_uplift', 'exp')]
     ).abs().values
     line = ax.errorbar(
         df.index, df[('rel_uplift', 'exp')], yerr=yerr_inner,

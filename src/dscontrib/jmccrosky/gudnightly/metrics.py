@@ -210,22 +210,23 @@ def metricRetention(
         col("new_profile") == 1
     )
 
-    pcd_table = pcd_table.alias("pcd_t").join(
-        activity_data.alias("i_t"),
-        (col('pcd_t.id') == col('i_t.id')) &
-        (col('i_t.date') >= F.date_add(col('pcd_t.date'), 1)) &
-        (col('i_t.date') <= F.date_add(col('pcd_t.date'), 6)),
-        "inner"
-    ).filter(
-        col("i_t." + feature_col) > 0
-    ).dropDuplicates(
-        ['id']
-    ).select(
-        [
-            col('pcd_t.{}'.format(c))
-            for c in ['id', 'bucket', "date"] + needed_dimension_variables
-        ]
-    )
+    if activated:
+        pcd_table = pcd_table.alias("pcd_t").join(
+            activity_data.alias("i_t"),
+            (col('pcd_t.id') == col('i_t.id')) &
+            (col('i_t.date') >= F.date_add(col('pcd_t.date'), 1)) &
+            (col('i_t.date') <= F.date_add(col('pcd_t.date'), 6)),
+            "inner"
+        ).filter(
+            col("i_t." + feature_col) > 0
+        ).dropDuplicates(
+            ['id']
+        ).select(
+            [
+                col('pcd_t.{}'.format(c))
+                for c in ['id', 'bucket', "date"] + needed_dimension_variables
+            ]
+        )
 
     intermediate_table3 = pcd_table.alias("pcd_t").join(
         activity_data.alias("i_t"),

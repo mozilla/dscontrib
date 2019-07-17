@@ -63,8 +63,12 @@ def writeForecasts(bigquery_client, table, model_date, forecast_end, data):
             "p{}".format(q): np.nanpercentile(forecastSamples['yhat'], q, axis=1)
             for q in range(10, 100, 10)
         })
+        output_data = pd.DataFrame(output_data)[[
+          "asofdate", "datasource", "date", "type", "mau", "low90", "high90",
+          "p10", "p20", "p30", "p40", "p50", "p60", "p70", "p80", "p90"
+        ]]
         errors = bigquery_client.insert_rows(
             table,
-            list(pd.DataFrame(output_data).itertuples(index=False, name=None))
+            list(output_data.itertuples(index=False, name=None))
         )
         assert errors == []

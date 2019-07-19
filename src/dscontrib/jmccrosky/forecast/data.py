@@ -5,7 +5,7 @@
 import pandas as pd
 
 
-_queries = {
+_kpi_queries = {
     "desktop": '''
         SELECT
             submission_date as date,
@@ -45,10 +45,12 @@ _queries = {
 }
 
 
-def getKpiData(bqClient):
+def getKpiData(bqClient, types=_kpi_queries):
     data = {}
-    for q in _queries:
-        rawData = bqClient.query(_queries[q]).to_dataframe()
+    if not isinstance(types, list):
+        types = [types]
+    for q in types:
+        rawData = bqClient.query(_kpi_queries[q]).to_dataframe()
         data['{}_global'.format(q)] = rawData[
             ["date", "global_mau"]
         ].rename(
@@ -58,6 +60,35 @@ def getKpiData(bqClient):
             ["date", "tier1_mau"]
         ].rename(
             index=str, columns={"date": "ds", "tier1_mau": "y"}
+        )
+    for k in data:
+        data[k]['ds'] = pd.to_datetime(data[k]['ds']).dt.date
+    return data
+
+
+_nondesktop_query = '''
+    SELECT
+        submission_date as date,
+        mau AS global_mau,
+        product
+    FROM
+        `moz-fx-data-derived-datasets.telemetry.firefox_nondesktop_exact_mau28_by_product_v1`
+    ORDER BY
+        date
+    '''
+
+
+def getNondesktopData(bqClient):
+    data = {}
+    rawData = bqClient.query(_nondesktop_query).to_dataframe()
+    for p in [
+        "Fennec Android", "Focus iOS", "Focus Android", "Fennec iOS", "Fenix",
+        "Firefox Lite", "FirefoxForFireTV", "FirefoxConnect"
+    ]:
+        data['{}'.format(p)] = rawData.query("product == @p")[
+            ["date", "global_mau"]
+        ].rename(
+            index=str, columns={"date": "ds", "global_mau": "y"}
         )
     for k in data:
         data[k]['ds'] = pd.to_datetime(data[k]['ds']).dt.date

@@ -6,7 +6,7 @@ from plotly.offline import plot
 import plotly.graph_objs as go
 from fbprophet.plot import add_changepoints_to_plot
 
-from dscontrib.jmccrosky.forecast.utils import calcMape
+from dscontrib.jmccrosky.forecast.utils import calcMAPE
 
 
 def evaluateModel(model, data, endDate=None, title=None):
@@ -23,7 +23,7 @@ def evaluateModel(model, data, endDate=None, title=None):
     all_forecast = model.predict(all_period)
     text = '{}Holdout MAPE: {:,.2f}%'.format(
         "{} - ".format(title) if title is not None else "",
-        calcMape(data["holdout"].y, holdout_forecast.yhat)
+        calcMAPE(data["holdout"].y, holdout_forecast.yhat)
     )
     plotHTML = plot({"data": [
         go.Scatter(x=data["all"]['ds'], y=data["all"]['y'], name='y'),

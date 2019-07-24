@@ -45,7 +45,7 @@ _kpi_queries = {
 }
 
 
-def getKpiData(bqClient, types=_kpi_queries):
+def getKPIData(bqClient, types=list(_kpi_queries.keys())):
     data = {}
     if not isinstance(types, list):
         types = [types]

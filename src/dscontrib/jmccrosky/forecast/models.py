@@ -22,7 +22,7 @@ def getEasters(year):
 
 
 # Get holidays dataframe in prophet's format
-def GetHolidays(years):
+def getHolidays(years):
     easters = pd.DataFrame({
         'ds': [e[1] for i in years for e in getEasters(i)],
         'holiday': [e[0] for i in years for e in getEasters(i)],
@@ -40,7 +40,7 @@ def setupModels(years):
         seasonality_mode='multiplicative',
         changepoint_prior_scale=0.008,
         seasonality_prior_scale=0.20,
-        holidays=GetHolidays(years)
+        holidays=getHolidays(years)
     )
     models["nondesktop_global"] = Prophet()
     models["fxa_global"] = Prophet()

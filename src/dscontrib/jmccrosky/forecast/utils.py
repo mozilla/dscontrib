@@ -8,15 +8,20 @@ from datetime import timedelta
 
 
 # Calculate Mean Absolute Percentage Error of forecast
-def calcMape(true, predicted):
+def calcMAPE(true, predicted):
     mask = true != 0
     return (np.fabs(true - predicted)/true)[mask].mean() * 100
 
 
 # Calculate Mean Relative Error of forecast
-def calcMre(true, predicted):
+def calcMRE(true, predicted):
     mask = true != 0
     return ((true - predicted)/true)[mask].mean() * 100
+
+
+def calcLogRatio(true, predicted):
+    logratio = np.mean(np.log(true) - np.log(predicted))
+    return logratio
 
 
 # Get most recent date in table

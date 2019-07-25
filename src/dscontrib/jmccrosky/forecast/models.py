@@ -47,4 +47,48 @@ def setupModels(years):
     models["desktop_tier1"] = Prophet()
     models["nondesktop_tier1"] = Prophet()
     models["fxa_tier1"] = Prophet()
+    models["Fennec Android"] = Prophet(
+        changepoint_prior_scale=0.0005,
+        seasonality_prior_scale=0.001,
+        seasonality_mode='multiplicative'
+    )
+    models["Focus iOS"] = Prophet(changepoint_prior_scale=0.0005)
+    models["Focus Android"] = Prophet(changepoint_prior_scale=0.005)
+    models["Fennec iOS"] = Prophet(
+        hangepoint_prior_scale=0.005,
+        seasonality_prior_scale=0.001,
+        seasonality_mode='multiplicative'
+    )
+    models["Fenix"] = Prophet(changepoint_prior_scale=0.0005)
+    models["Firefox Lite"] = Prophet(changepoint_prior_scale=0.0005)
+    models["FirefoxForFireTV"] = Prophet(
+        changepoint_prior_scale=0.0005,
+        seasonality_prior_scale=0.005,
+        seasonality_mode='multiplicative',
+        yearly_seasonality=True
+    )
+    models["FirefoxConnect"] = Prophet(changepoint_prior_scale=0.0005)
     return models
+
+
+def setupDataFilters():
+    filters = {}
+    filters["desktop_global"] = lambda x: x
+    filters["nondesktop_global"] = lambda x: x
+    filters["fxa_global"] = lambda x: x
+    filters["desktop_tier1"] = lambda x: x
+    filters["nondesktop_tier1"] = lambda x: x
+    filters["fxa_tier1"] = lambda x: x
+    filters["Fennec Android"] = lambda x: x.query("ds >= '2017-03-04'")
+    filters["Focus iOS"] = lambda x: x.query("ds >= '2017-12-06'")
+    filters["Focus Android"] = lambda x: x.query(
+        "(ds >= '2017-07-17') & ((ds < '2018-09-01') | (ds > '2019-03-01'))"
+    )
+    filters["Fennec iOS"] = lambda x: x.query(
+        "(ds >= '2017-03-03') & ((ds < '2017-11-08') | (ds > '2017-12-31'))"
+    )
+    filters["Fenix"] = lambda x: x.query("ds >= '2019-07-03'")
+    filters["Firefox Lite"] = lambda x: x.query("ds >= '2019-05-17'")
+    filters["FirefoxForFireTV"] = lambda x: x.query("ds >= '2018-02-04'")
+    filters["FirefoxConnect"] = lambda x: x.query("ds >= '2018-10-10'")
+    return filters

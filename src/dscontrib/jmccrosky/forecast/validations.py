@@ -5,9 +5,10 @@
 import pandas as pd
 import numpy as np
 from datetime import timedelta
+from collections import defaultdict
 from plotly.offline import plot
 import plotly.graph_objs as go
-from dscontrib.jmccrosky.forecast.utils import s2d
+from dscontrib.jmccrosky.forecast.utils import s2d, matchDates
 
 
 def _getSinglePrediciton(model, data, trainingEndDate, targetDate):
@@ -69,9 +70,13 @@ def _getMetricForRange(model, data, trainingEndDate, metric):
     model.fit(data.query("ds <= @trainingEndDate"))
     forecast_period = pd.DataFrame({'ds': pd.date_range(forecastStart, forecastEnd)})
     forecast = model.predict(forecast_period)
+    matched = matchDates(
+        data.query("ds <= @forecastEnd & ds >= @forecastStart"),
+        forecast
+    )
     metric = metric(
-        np.array(data.query("ds <= @forecastEnd & ds >= @forecastStart").y),
-        np.array(forecast.yhat),
+        np.array(matched.y),
+        np.array(matched.yhat),
     )
     return metric
 
@@ -100,14 +105,18 @@ def _getMetricTrace(model, data, trainingEndDate, metric, metricName):
     model.fit(data.query("ds <= @trainingEndDate"))
     forecastPeriod = pd.DataFrame({'ds': pd.date_range(forecastStart, forecastEnd)})
     forecast = model.predict(forecastPeriod)
+    matched = matchDates(
+        data,
+        forecast
+    )
     return pd.DataFrame({
-        "ds": forecastPeriod.ds,
+        "ds": matched.ds,
         metricName: [
             metric(
-                np.array(data.query("ds == @d").y),
-                np.array(forecast.query("ds == @d").yhat)
+                np.array(matched.query("ds == @d").y),
+                np.array(matched.query("ds == @d").yhat)
             )
-            for d in forecastPeriod.ds.dt.date
+            for d in matched.ds
         ]
     })
 
@@ -128,3 +137,40 @@ def ValidateTraces(modelGen, data, trainingEndDateRange, metric, metricName):
         },
         output_type="div",
     )
+
+
+def _accumulateHorizonMetrics(model, data, trainingEndDate, metric, metricValues):
+    forecastStart = trainingEndDate + timedelta(days=1)
+    forecastEnd = data.ds.max()
+    model.fit(data.query("ds <= @trainingEndDate"))
+    forecastPeriod = pd.DataFrame({'ds': pd.date_range(forecastStart, forecastEnd)})
+    forecast = model.predict(forecastPeriod)
+    matched = matchDates(
+        data,
+        forecast
+    )
+    for d in matched.ds:
+        metricValue = metric(
+            np.array(matched.query("ds == @d").y),
+            np.array(matched.query("ds == @d").yhat)
+        )
+        horizon = (d - trainingEndDate).days
+        metricValues[horizon].append(metricValue)
+
+
+def ValidateMetricHorizon(modelGen, data, trainingEndDateRange, metric, metricName):
+    metricValues = defaultdict(lambda: [])
+    for d in trainingEndDateRange:
+        _accumulateHorizonMetrics(modelGen(), data, d, metric, metricValues)
+    data = pd.DataFrame({
+        "horizon": [i for i in metricValues.keys()],
+        metricName: [np.mean(metricValues[h]) for h in metricValues.keys()]
+    })
+    return plot({
+        "data": [
+            go.Scatter(x=data['horizon'], y=data[metricName], name="metricName"),
+        ],
+        "layout": go.Layout(
+            title="{} by model Horizon".format(metricName)
+        )
+    }, output_type="div")

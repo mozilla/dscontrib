@@ -52,3 +52,9 @@ def splitData(data, firstTrainDate, firstHoldoutDate, firstTestDate, lastTestDat
 
 def s2d(stringDate):
     return pd.to_datetime(stringDate).date()
+
+
+def matchDates(data, forecast):
+    temp = forecast.copy()
+    temp['ds'] = temp.ds.dt.date
+    return data.merge(temp, on="ds", how="inner")

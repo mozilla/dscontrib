@@ -8,7 +8,7 @@ from google.cloud import bigquery
 from google.cloud.exceptions import NotFound
 from datetime import timedelta
 
-from dscontrib.jmccrosky.forecast.models import setupModels, setupDataFilters
+from dscontrib.jmccrosky.forecast.models import setupModels, dataFilter
 
 
 # Delete output table if necessary and create empty table with appropriate schema
@@ -41,12 +41,11 @@ def writeForecasts(bigquery_client, table, modelDate, forecastEnd, data, product
     maxYear = forecastEnd.year
     years = range(minYear, maxYear + 1)
     models = setupModels(years)
-    filters = setupDataFilters(years)
     forecastStart = modelDate + timedelta(days=1)
     forecastPeriod = pd.DataFrame({'ds': pd.date_range(forecastStart, forecastEnd)})
-    data = filters[product](data)
+    data = dataFilter(data, product)
     models[product].fit(data.query("ds <= @modelDate"))
-    forecastSamples = models.sample_posterior_predictive(
+    forecastSamples = models[product].sample_posterior_predictive(
         models[product].setup_dataframe(forecastPeriod)
     )
     outputData = {

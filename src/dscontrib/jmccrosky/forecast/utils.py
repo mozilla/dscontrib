@@ -25,13 +25,20 @@ def calcLogRatio(true, predicted):
 
 
 # Get most recent date in table
-def getLatestDate(bqClient, project, dataset, table, field):
+def getLatestDate(bqClient, project, dataset, table, product, field):
     query = '''
         SELECT
             MAX({field}) as date
         FROM
             `{project}.{dataset}.{table}`
-    '''.format(project=project, dataset=dataset, table=table, field=field)
+        WHERE
+            datasource="{product}"
+    '''.format(
+        project=project, dataset=dataset, table=table, field=field, product=product
+    )
+    data = bqClient.query(query).to_dataframe()
+    if len(data) == 0:
+        return None
     return bqClient.query(query).to_dataframe()['date'][0]
 
 

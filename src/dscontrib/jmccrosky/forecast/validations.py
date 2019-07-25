@@ -92,3 +92,39 @@ def ValidateMetric(modelGen, data, trainingEndDateRange, metric, metricName):
         },
         output_type="div"
     )
+
+
+def _getMetricTrace(model, data, trainingEndDate, metric, metricName):
+    forecastStart = trainingEndDate + timedelta(days=1)
+    forecastEnd = data.ds.max()
+    model.fit(data.query("ds <= @trainingEndDate"))
+    forecastPeriod = pd.DataFrame({'ds': pd.date_range(forecastStart, forecastEnd)})
+    forecast = model.predict(forecastPeriod)
+    return pd.DataFrame({
+        "ds": forecastPeriod.ds,
+        metricName: [
+            metric(
+                np.array(data.query("ds == @d").y),
+                np.array(forecast.query("ds == @d").yhat)
+            )
+            for d in forecastPeriod.ds.dt.date
+        ]
+    })
+
+
+def ValidateTraces(modelGen, data, trainingEndDateRange, metric, metricName):
+    traces = []
+    for d in trainingEndDateRange:
+        traces.append(_getMetricTrace(modelGen(), data, d, metric, metricName))
+    return plot(
+        {
+            "data":
+                [
+                    go.Scatter(x=d['ds'], y=d[metricName])
+                    for d in traces
+                ],
+            "layout":
+                go.Layout(title="Model traces of {}".format(metricName))
+        },
+        output_type="div",
+    )

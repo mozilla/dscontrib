@@ -74,19 +74,21 @@ def setupModels(years):
 
 def dataFilter(data, product):
     startDates = {
-      "Fennec Android": s2d('2017-03-04'),
-      "Focus iOS": s2d('2017-12-06'),
-      "Focus Android": s2d('2017-07-17'),
-      "Fennec iOS": s2d('2017-03-03'),
-      "Fenix": s2d('2019-07-03'),
-      "Firefox Lite": s2d('2017-03-04'),
-      "FirefoxForFireTV": s2d('2018-02-04'),
-      "FirefoxConnect": s2d('2018-10-10'),
+        "desktop_global": s2d('2016-04-08'),
+        "Fennec Android": s2d('2017-03-04'),
+        "Focus iOS": s2d('2017-12-06'),
+        "Focus Android": s2d('2017-07-17'),
+        "Fennec iOS": s2d('2017-03-03'),
+        "Fenix": s2d('2019-07-03'),
+        "Firefox Lite": s2d('2017-03-04'),
+        "FirefoxForFireTV": s2d('2018-02-04'),
+        "FirefoxConnect": s2d('2018-10-10'),
     }
 
     anomalyDates = {
-      "Focus Android": [s2d('2018-09-01'), s2d('2019-03-01')],
-      "Fennec iOS": [s2d('2017-11-08'), s2d('2017-12-31')],
+        "desktop_global": [s2d('2019-05-16'), s2d('2019-06-07')],
+        "Focus Android": [s2d('2018-09-01'), s2d('2019-03-01')],
+        "Fennec iOS": [s2d('2017-11-08'), s2d('2017-12-31')],
     }
     temp = data.copy()
     if product in startDates:

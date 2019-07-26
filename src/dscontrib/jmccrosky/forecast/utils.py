@@ -4,6 +4,7 @@
 
 import numpy as np
 import pandas as pd
+import plotly.graph_objs as go
 from datetime import timedelta
 
 
@@ -65,3 +66,19 @@ def matchDates(data, forecast):
     temp = forecast.copy()
     temp['ds'] = temp.ds.dt.date
     return data.merge(temp, on="ds", how="inner")
+
+
+def getLayout(title, xaxis, yaxis):
+    return go.Layout(
+        title=title,
+        xaxis=go.layout.XAxis(
+            title=go.layout.xaxis.Title(
+                text=xaxis
+            )
+        ),
+        yaxis=go.layout.YAxis(
+            title=go.layout.yaxis.Title(
+                text=yaxis
+            )
+        ),
+    )

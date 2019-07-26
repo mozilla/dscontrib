@@ -8,7 +8,7 @@ from datetime import timedelta
 from collections import defaultdict
 from plotly.offline import plot
 import plotly.graph_objs as go
-from dscontrib.jmccrosky.forecast.utils import s2d, matchDates
+from dscontrib.jmccrosky.forecast.utils import s2d, matchDates, getLayout
 
 
 def _getSinglePrediciton(model, data, trainingEndDate, targetDate):
@@ -55,9 +55,11 @@ def ValidateStability(modelGen, data, trainingEndDateRange, targetDate):
                     name='lower 80% CI',
                 ),
             ],
-            "layout": go.Layout(
-                title=("Predictions of MAU for {} using model "
-                       "fit on data up to each date").format(targetDate)
+            "layout": getLayout(
+                ("Predictions of MAU for {} using model "
+                 "fit on data up to each date").format(targetDate),
+                "Model Trained On Data Up To Date",
+                "Prediction for {}".format(targetDate)
             )
         },
         output_type="div"
@@ -91,8 +93,10 @@ def ValidateMetric(modelGen, data, trainingEndDateRange, metric, metricName):
     return plot(
         {
             "data": [go.Scatter(x=data['date'], y=data[metricName], name=metricName)],
-            "layout": go.Layout(
-                title="{} for model trained up to date".format(metricName)
+            "layout": getLayout(
+                "{} for model trained up to date".format(metricName),
+                "Model Trained On Data Up To Date",
+                "{} Metric Value".format(metricName)
             )
         },
         output_type="div"
@@ -132,8 +136,11 @@ def ValidateTraces(modelGen, data, trainingEndDateRange, metric, metricName):
                     go.Scatter(x=d['ds'], y=d[metricName])
                     for d in traces
                 ],
-            "layout":
-                go.Layout(title="Model traces of {}".format(metricName))
+                "layout": getLayout(
+                    "Model Traces of {}".format(metricName),
+                    "Prediction Date",
+                    "{} Metric Value".format(metricName)
+                )
         },
         output_type="div",
     )
@@ -170,7 +177,9 @@ def ValidateMetricHorizon(modelGen, data, trainingEndDateRange, metric, metricNa
         "data": [
             go.Scatter(x=data['horizon'], y=data[metricName], name="metricName"),
         ],
-        "layout": go.Layout(
-            title="{} by model Horizon".format(metricName)
+        "layout": getLayout(
+            "{} Metric By Model Horizon".format(metricName),
+            "Model Horizon",
+            "Mean {} Metric Value".format(metricName)
         )
     }, output_type="div")

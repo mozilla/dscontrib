@@ -21,6 +21,7 @@ setup(
     install_requires=[
         "numpy",
         "pandas",
-        "scipy"
+        "scipy",
+        "mozanalysis"
     ],
 )

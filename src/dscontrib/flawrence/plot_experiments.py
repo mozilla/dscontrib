@@ -2,9 +2,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-import dscontrib.flawrence.bayesian_stats.binary as flbsbin
-import dscontrib.flawrence.bayesian_stats.bayesian_bootstrap as flbsbb
-import dscontrib.flawrence.bayesian_stats.survival_func as flbssf
+import mozanalysis.bayesian_stats.binary as mabin
+import mozanalysis.bayesian_stats.bayesian_bootstrap as mabb
+import mozanalysis.bayesian_stats.survival_func as masf
 
 
 def plot_ts(t_df, col_label, stats_model, ref_branch_label='control', sc=None):
@@ -41,7 +41,7 @@ def plot_ts(t_df, col_label, stats_model, ref_branch_label='control', sc=None):
 
 
 def plot_survival(df, col_label, ref_branch_label='control', thresholds=None):
-    data = flbssf.compare_branches(df, col_label, ref_branch_label, thresholds)
+    data = masf.compare_branches(df, col_label, ref_branch_label, thresholds)
 
     fig, (ax1, ax2) = plt.subplots(nrows=2, sharex=True, figsize=(6, 10))
 
@@ -62,29 +62,6 @@ def plot_survival(df, col_label, ref_branch_label='control', thresholds=None):
 
     fig.tight_layout()
     return fig
-
-
-def get_thresholds(col, max_num_thresholds=101):
-    """Return a set of interesting thresholds for the dataset `col`
-
-    Assumes that the values are non-negative, with zero as a special case.
-
-    Args:
-        col: a Series of individual data for a metric
-        max_num_thresholds (int): Return at most this many threshold values.
-
-    Returns:
-        A list of thresholds. By default these are de-duped percentiles
-        of the nonzero data.
-    """
-    # When taking quantiles, treat "0" as a special case so that we
-    # still have resolution if 99% of users are 0.
-    nonzero_quantiles = col[col > 0].quantile(
-        np.linspace(0, 1, max_num_thresholds)
-    )
-    return sorted(
-        [np.float64(0)] + list(nonzero_quantiles.unique())
-    )[:-1]  # The thresholds get used as `>` not `>=`, so exclude the max value
 
 
 def plot_means_line(ax, branch_x_stats, ref_branch_label='control'):
@@ -222,12 +199,12 @@ def crunch_nums_ts(ts, col_label, stats_model, ref_branch_label='control', sc=No
     # TODO: this really smells like a map then a zip?
     for k, v in ts.items():
         if stats_model == 'beta':
-            bla = flbsbin.compare_branches(
+            bla = mabin.compare_branches(
                 v, col_label, ref_branch_label=ref_branch_label
             )
         elif stats_model == 'bootstrap':
             assert sc is not None
-            bla = flbsbb.compare_branches(
+            bla = mabb.compare_branches(
                 sc, v, col_label,
                 ref_branch_label=ref_branch_label, filter_outliers=0.9999
             )

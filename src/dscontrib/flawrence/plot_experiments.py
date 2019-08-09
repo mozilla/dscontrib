@@ -34,7 +34,7 @@ def plot_ts(t_df, col_label, stats_model, ref_branch_label='control', sc=None):
     ax1.legend()
     ax1.set_ylabel(col_label)
 
-    ax2.set_xlabel('Time since enrollment')
+    ax2.set_xlabel('Days since enrollment')
     ax2.set_ylabel('Uplift relative to {}'.format(ref_branch_label))
     fig.tight_layout()
     return fig
@@ -70,8 +70,15 @@ def plot_means_line(ax, branch_x_stats, ref_branch_label='control'):
 
 
 def plot_means_scatter(ax, branch_x_stats, ref_branch_label='control'):
-    for branch_label in sort_branch_list(branch_x_stats.keys(), ref_branch_label):
-        _plot_means_scatter(ax, branch_x_stats[branch_label], branch_label)
+    num_branches = len(branch_x_stats)
+
+    for i, branch_label in enumerate(
+        sort_branch_list(branch_x_stats.keys(), ref_branch_label)
+    ):
+        offset = i * 0.15 - (num_branches - 1) / 2 * 0.15
+        _plot_means_scatter(
+            ax, pd.DataFrame(branch_x_stats[branch_label]).T, branch_label, offset
+        )
 
 
 def _plot_means_line(ax, df, branch_label):
@@ -93,19 +100,19 @@ def _plot_means_line(ax, df, branch_label):
     )
 
 
-def _plot_means_scatter(ax, df, branch_label):
+def _plot_means_scatter(ax, df, branch_label, offset):
     # TODO: add an x offset between branches, and caps for matplotlib 3
     yerr_inner = (df[['0.025', '0.975']].T - df['mean']).abs().values
     yerr_outer = (df[['0.005', '0.995']].T - df['mean']).abs().values
     line = ax.errorbar(
-        df.index, df['mean'], yerr=yerr_inner,
-        fmt='.', elinewidth=2, capsize=0,
+        df.index + offset, df['mean'], yerr=yerr_inner,
+        fmt='.', elinewidth=3, capsize=0,
         label=branch_label
     )[0]
     col = line.get_color()
     ax.errorbar(
-        df.index, df['mean'], yerr=yerr_outer,
-        fmt='.', color=col, ecolor=col, label=None
+        df.index + offset, df['mean'], yerr=yerr_outer,
+        fmt='.', capsize=3, color=col, ecolor=col, label=None
     )
 
 
@@ -164,12 +171,12 @@ def _plot_uplifts_scatter(ax, x_df):
     ).abs().values
     line = ax.errorbar(
         df.index, df[('rel_uplift', 'exp')], yerr=yerr_inner,
-        fmt='.', elinewidth=2, capsize=0,
+        fmt='.', elinewidth=3, capsize=0,
     )[0]
     col = line.get_color()
     ax.errorbar(
         df.index, df[('rel_uplift', 'exp')], yerr=yerr_outer,
-        fmt='.', color=col, ecolor=col, label=None
+        fmt='.', capsize=3, color=col, ecolor=col, label=None
     )
     # # matplotlib 1 :(
     # ax.set_xticks(df.index)
@@ -178,7 +185,7 @@ def _plot_uplifts_scatter(ax, x_df):
 
 def crunch_nums_ts(ts, col_label, stats_model, ref_branch_label='control', sc=None):
     assert all_eq((len(v) for v in ts.values()))
-    assert all_eq((set(tuple(v.branch.unique()) for v in ts.values())))
+    assert all_eq((set(tuple(sorted(v.branch.unique())) for v in ts.values())))
 
     branch_list = next(iter(ts.values())).branch.unique()
     # # Maybe defaultdicts are offensive because they hide the schema?
@@ -206,7 +213,7 @@ def crunch_nums_ts(ts, col_label, stats_model, ref_branch_label='control', sc=No
             assert sc is not None
             bla = mabb.compare_branches(
                 sc, v, col_label,
-                ref_branch_label=ref_branch_label, filter_outliers=0.9999
+                ref_branch_label=ref_branch_label, threshold_quantile=0.9999
             )
         else:
             raise NotImplementedError

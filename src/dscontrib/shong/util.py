@@ -12,10 +12,15 @@
 # register_df(df, name, cache=False, sqlContext=sqlContext):
 
 
-# --------------- date utils ---------------
-
+# date util: imports
 import datetime
 from datetime import timedelta
+
+# spark util: imports
+from pyspark.sql import SparkSession
+
+# --------------- date utils ---------------
+
 
 
 def date_plus_N(date, N):
@@ -43,8 +48,6 @@ def string_to_date(date, format='%Y%m%d'):
 
 
 # --------------- spark utils ---------------
-
-from pyspark.sql import SparkSession
 
 
 spark = SparkSession.builder.getOrCreate()

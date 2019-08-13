@@ -22,7 +22,6 @@ from pyspark.sql import SparkSession
 # --------------- date utils ---------------
 
 
-
 def date_plus_N(date, N):
     """
     takes datetime.date

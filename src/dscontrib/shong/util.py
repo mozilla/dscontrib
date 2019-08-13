@@ -1,15 +1,14 @@
 # date utils:
 
-# date_plus_N(date, N):
-# date_to_string(date, format='%Y%m%d'):
-# string_to_date(date, format='%Y%m%d'):
+# date_plus_N(date, N)
+# date_to_string(date, format='%Y%m%d')
+# string_to_date(date, format='%Y%m%d')
 
 # spark utils
 
-# read_parquet_from_s3(path, spark=spark):
-# write_parquet_to_s3(df, path, mode='overwrite', spark=spark):
-# read_main_summary():
-# register_df(df, name, cache=False, sqlContext=sqlContext):
+# read_parquet_from_s3(path)
+# write_parquet_to_s3(df, path, mode='overwrite')
+# read_main_summary()
 
 
 # date util: imports

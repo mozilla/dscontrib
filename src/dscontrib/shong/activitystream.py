@@ -13,7 +13,7 @@ import socket
 spark = SparkSession.builder.getOrCreate()
 
 
-def pull_tiles_data(sql_query, dbutils=dbutils): # noqa
+def pull_tiles_data(sql_query, dbutils):
     """
     provide SQL query, will return spark df of results
     """
@@ -36,8 +36,8 @@ def pull_tiles_data(sql_query, dbutils=dbutils): # noqa
         jdbcurl = ("jdbc:postgresql://{0}:{1}/tiles?user={2}" +
                    "&password={3}&ssl=true&sslMode=verify-ca"
                    .format(hostname, port,
-                           dbutils.secrets.get('tiles-redshift', 'username'), # noqa
-                           dbutils.secrets.get('tiles-redshift', 'password') # noqa
+                           dbutils.secrets.get('tiles-redshift', 'username'),
+                           dbutils.secrets.get('tiles-redshift', 'password')
                            ))
         return jdbcurl
 

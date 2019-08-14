@@ -38,7 +38,7 @@ def pull_tiles_data(sql_query, dbutils):
                    .format(hostname, port,
                            dbutils.secrets.get('tiles-redshift', 'username'),
                            dbutils.secrets.get('tiles-redshift', 'password')
-                           ))
+                           )
         return jdbcurl
 
     TEMPDIR = "s3n://mozilla-databricks-telemetry-test/tiles-redshift/_temp"

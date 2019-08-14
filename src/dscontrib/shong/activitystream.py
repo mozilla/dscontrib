@@ -1,6 +1,6 @@
 # activity stream utils
 
-# pull_tiles_data(sql_query, pw)
+# pull_tiles_data(sql_query, dbutils)
 
 
 # activity stream utils: imports

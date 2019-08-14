@@ -18,7 +18,7 @@ def pull_tiles_data(sql_query):
     provide SQL query, will return spark df of results
     """
 
-    def tiles_redshift_jdbcurl_fetch(dbutils=dbutils):
+    def tiles_redshift_jdbcurl_fetch(dbutils=dbutils): # noqa
         socket.setdefaulttimeout(3)
         s = socket.socket()
         rs = 'databricks-tiles-redshift.data.mozaws.net:5432'

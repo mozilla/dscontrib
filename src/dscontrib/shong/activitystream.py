@@ -6,6 +6,7 @@
 # activity stream utils: imports
 from pyspark.sql import SparkSession
 import socket
+import dbutils
 
 # --------------- activity stream utils ---------------
 
@@ -34,8 +35,8 @@ def pull_tiles_data(sql_query):
         finally:
             s.close()
         jdbcurl = ("jdbc:postgresql://{0}:{1}/tiles?user={2}" +
-                   "&password={3}&ssl=true&sslMode=verify-ca"\
-                   .format(hostname, port, 
+                   "&password={3}&ssl=true&sslMode=verify-ca"
+                   .format(hostname, port,
                            dbutils.secrets.get('tiles-redshift', 'username'),
                            dbutils.secrets.get('tiles-redshift', 'password')
                            ))

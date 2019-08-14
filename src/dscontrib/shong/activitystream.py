@@ -35,10 +35,10 @@ def pull_tiles_data(sql_query, dbutils):
             s.close()
         jdbcurl = ("jdbc:postgresql://{0}:{1}/tiles?user={2}" +
                    "&password={3}&ssl=true&sslMode=verify-ca")\
-                  .format(hostname, port,
-                          dbutils.secrets.get('tiles-redshift', 'username'),
-                          dbutils.secrets.get('tiles-redshift', 'password')
-                          )
+        .format(hostname, port,
+          dbutils.secrets.get('tiles-redshift', 'username'),
+          dbutils.secrets.get('tiles-redshift', 'password')
+          )
         return jdbcurl
 
     TEMPDIR = "s3n://mozilla-databricks-telemetry-test/tiles-redshift/_temp"

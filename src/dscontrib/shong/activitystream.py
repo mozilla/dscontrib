@@ -13,7 +13,7 @@ import socket
 spark = SparkSession.builder.getOrCreate()
 
 
-def pull_tiles_data(sql_query):
+def pull_tiles_data(sql_query, dbutils=dbutils): # noqa
     """
     provide SQL query, will return spark df of results
     """

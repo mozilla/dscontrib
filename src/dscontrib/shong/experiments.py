@@ -277,14 +277,12 @@ def experiment_pings(pings_df, membership_df, observation_period):
             & (F.col('branch') == F.col('branch_pings'))
             & (F.datediff(F.col('activity_dt'),
                           F.col('enrollment_dt')) < observation_period)
-# only include pings a day after enrollment
             & (F.datediff(F.col('activity_dt'),
-                          F.col('enrollment_dt')) > 0),
+                          F.col('enrollment_dt')) > 0), # no enroll day pings
             how='left'
             )
         df = df.drop('branch_pings')
 
-    # if branch doesn't exist, just join on client_id and date range
     else:
         df = membership_df.join(
             pings_df,
@@ -293,7 +291,7 @@ def experiment_pings(pings_df, membership_df, observation_period):
                           F.col('enrollment_dt')) < observation_period)
 # only include pings a day after enrollment
             & (F.datediff(F.col('activity_dt'),
-                          F.col('enrollment_dt')) > 0),
+                          F.col('enrollment_dt')) > 0), # no enroll day pings
             how='left')
 
     # clean up columns

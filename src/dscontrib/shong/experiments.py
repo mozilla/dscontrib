@@ -83,7 +83,7 @@ def experiment_membership_df(slug, date_start, enrollment_period, observation_pe
     # ------------ unenrollment pings --------------------
 
     # get unenrollments in the maximum observation period for experiment
-    unenrollments = events.filter("event_category = 'normandy'") 
+    unenrollments = events.filter("event_category = 'normandy'")
     unenrollments = unenrollments.filter("AND event_method = 'unenroll'")
     unenrollments = unenrollments.filter("submission_date_s3 >= '%s'" % date_start)
     unenrollments = unenrollments.filter("submission_date_s3 <= '%s'" % date_obs_end)
@@ -122,9 +122,9 @@ def experiment_membership_df(slug, date_start, enrollment_period, observation_pe
         unenrollments,
         (F.col('client_id_enrollment') == F.col('client_id_unenrollment'))
         & (F.col('branch_enrollment') == F.col('branch_unenrollment'))
-        & (F.datediff(F.col('first_branch_unenrollment_dt'), 
+        & (F.datediff(F.col('first_branch_unenrollment_dt'),
                       F.col('first_branch_enrollment_dt')
-                     ) < observation_period), 
+                      ) < observation_period),
         how='left'
         )
 
@@ -216,7 +216,7 @@ def as_pings_subset_df(as_df, date_start, total_period, slug=None):
 
     # get date end of maximum possible observation period
     date_obs_end = date_plus_N(date_start, total_period)
-    
+
     # convert everything into as date string format
     date_start = date_to_string(date_start, '%Y-%m-%d')
     date_obs_end = date_to_string(date_obs_end, '%Y-%m-%d')
@@ -229,25 +229,25 @@ def as_pings_subset_df(as_df, date_start, total_period, slug=None):
     # ----------------- tagged only if slug provided -----------------
 
     if slug is not None:
-            # set up udf for parsing activity stream experiment field
-            schema = MapType(StringType(), StringType())
-            as_experiment_field_udf = udf(as_experiment_field, schema)
+        # set up udf for parsing activity stream experiment field
+        schema = MapType(StringType(), StringType())
+        as_experiment_field_udf = udf(as_experiment_field, schema)
 
-            # get experiments field into standard format
-            as_df = as_df.withColumn('experiments', 
-                                     as_experiment_field_udf(F.col('shield_id'))
-                                     )
+        # get experiments field into standard format
+        as_df = as_df.withColumn('experiments',
+                                 as_experiment_field_udf(F.col('shield_id'))
+                                 )
 
-            # keep only data tagged with experiment and get branch column
-            as_df = as_df.filter("experiments['%s'] is not null" % slug)
-            as_df = as_df.withColumn('branch', F.col('experiments')[slug])
-            as_df = as_df.drop('experiments')
+        # keep only data tagged with experiment and get branch column
+        as_df = as_df.filter("experiments['%s'] is not null" % slug)
+        as_df = as_df.withColumn('branch', F.col('experiments')[slug])
+        as_df = as_df.drop('experiments')
 
     as_df = as_df.withColumn('activity_dt', F.col('date'))
     as_df = as_df.drop('shield_id').drop('date')
 
     return as_df
-    
+
 
 def experiment_pings(pings_df, membership_df, observation_period):
     """
@@ -261,24 +261,25 @@ def experiment_pings(pings_df, membership_df, observation_period):
 
     # rename column so joining is easier
     pings_df = pings_df.withColumn(
-        'client_id_pings', 
+        'client_id_pings',
         F.col('client_id')
                                   ).drop('client_id')
-    
+
     # if branch exists, join on client_id, branch, date range
     if 'branch' in pings_df.columns:
-        pings_df = pings_df.withColumn('branch_pings', 
-                                       F.col('branch')
-                            ).drop('branch')
+        pings_df = pings_df.withColumn(
+            'branch_pings',
+            F.col('branch')
+                                       ).drop('branch')
         df = membership_df.join(
             pings_df,
             (F.col('client_id') == F.col('client_id_pings'))
             & (F.col('branch') == F.col('branch_pings'))
-            & (F.datediff(F.col('activity_dt'), 
+            & (F.datediff(F.col('activity_dt'),
                           F.col('enrollment_dt')) < observation_period)
-            & (F.datediff(F.col('activity_dt'), 
-                          F.col('enrollment_dt')) > 0), 
-                          # only include pings a day after enrollment
+# only include pings a day after enrollment
+            & (F.datediff(F.col('activity_dt'),
+                          F.col('enrollment_dt')) > 0),
             how='left'
             )
         df = df.drop('branch_pings')
@@ -290,11 +291,11 @@ def experiment_pings(pings_df, membership_df, observation_period):
             (F.col('client_id') == F.col('client_id_pings'))
             & (F.datediff(F.col('activity_dt'),
                           F.col('enrollment_dt')) < observation_period)
+# only include pings a day after enrollment
             & (F.datediff(F.col('activity_dt'),
                           F.col('enrollment_dt')) > 0),
-                          # only include pings a day after enrollment
             how='left')
-    
+
     # clean up columns
     df = df.drop('client_id_pings')
 

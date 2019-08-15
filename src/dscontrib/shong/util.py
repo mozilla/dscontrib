@@ -1,8 +1,9 @@
-# date utils:
+# date utils
 
 # date_plus_N(date, N)
 # date_to_string(date, format='%Y%m%d')
 # string_to_date(date, format='%Y%m%d')
+# date_range(start_dt, N)
 
 # spark utils
 
@@ -43,6 +44,16 @@ def string_to_date(date, format='%Y%m%d'):
     returns datetime.date
     """
     return datetime.datetime.strptime(date, format).date()
+
+
+def date_range(start_dt, N):
+    """
+    N can be int or a datetime.date
+    returns an array of datetime.date
+    """
+    if type(N) != int:
+        N = (N - start_dt).days
+    return [date_plus_N(start_dt, n) for n in range(N + 1)]
 
 
 # --------------- spark utils ---------------

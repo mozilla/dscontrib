@@ -278,7 +278,7 @@ def experiment_pings(pings_df, membership_df, observation_period):
             & (F.datediff(F.col('activity_dt'),
                           F.col('enrollment_dt')) < observation_period)
             & (F.datediff(F.col('activity_dt'),
-                          F.col('enrollment_dt')) > 0), # no enroll day pings
+                          F.col('enrollment_dt')) > 0),  # no enroll day pings
             how='left'
             )
         df = df.drop('branch_pings')
@@ -289,9 +289,8 @@ def experiment_pings(pings_df, membership_df, observation_period):
             (F.col('client_id') == F.col('client_id_pings'))
             & (F.datediff(F.col('activity_dt'),
                           F.col('enrollment_dt')) < observation_period)
-# only include pings a day after enrollment
             & (F.datediff(F.col('activity_dt'),
-                          F.col('enrollment_dt')) > 0), # no enroll day pings
+                          F.col('enrollment_dt')) > 0),  # no enroll day pings
             how='left')
 
     # clean up columns

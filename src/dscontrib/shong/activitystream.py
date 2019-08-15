@@ -8,8 +8,8 @@
 from pyspark.sql import SparkSession
 import socket
 # local dependences
-from util import write_parquet_to_s3, read_parquet_from_s3, date_to_string
-from constants import S3_ROOT
+from shong.util import write_parquet_to_s3, read_parquet_from_s3, date_to_string
+from shong.constants import S3_ROOT
 
 # --------------- activity stream utils ---------------
 

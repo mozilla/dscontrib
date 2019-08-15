@@ -1,4 +1,7 @@
 # experiment_membership_df(slug, date_start, enrollment_period, observation_period)
+# ms_pings_subset_df(df, date_start, total_period, columns=MS_USAGE_COLS, slug=None)
+# as_pings_subset_df(as_df, date_start, total_period, slug=None)
+# experiment_pings(pings_df, membership_df, observation_period)
 
 # spark imports
 from pyspark.sql import SparkSession
@@ -84,7 +87,7 @@ def experiment_membership_df(slug, date_start, enrollment_period, observation_pe
 
     # get unenrollments in the maximum observation period for experiment
     unenrollments = events.filter("event_category = 'normandy'")
-    unenrollments = unenrollments.filter("AND event_method = 'unenroll'")
+    unenrollments = unenrollments.filter("event_method = 'unenroll'")
     unenrollments = unenrollments.filter("submission_date_s3 >= '%s'" % date_start)
     unenrollments = unenrollments.filter("submission_date_s3 <= '%s'" % date_obs_end)
     unenrollments = unenrollments.filter("event_string_value = '%s'" % slug)

@@ -119,5 +119,5 @@ def as_experiment_field(shield_ids):
                 exp_dict[i.split(':')[0]] = i.split(':')[1]
             if exp_dict != {}:
                 return exp_dict
-    except: #noqa
+    except:  # noqa
         return

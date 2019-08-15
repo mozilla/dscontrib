@@ -8,12 +8,10 @@
 from pyspark.sql import SparkSession
 import socket
 # local dependences
-from dscontrib.shong.util import (write_parquet_to_s3,
-                                  read_parquet_from_s3,
-                                  date_to_string)
-from dscontrib.shong.constants import S3_ROOT
+from .util import write_parquet_to_s3, read_parquet_from_s3, date_to_string
+from .constants import S3_ROOT
 
-# --------------- activity stream utils ---------------
+# --------------- accessing activity stream data utils ---------------
 
 
 spark = SparkSession.builder.getOrCreate()
@@ -103,3 +101,24 @@ def validate_as_data_quality(sql_query, dates, dbutils):
         except Exception as E:
             print("{}: has error".format(date))
             print(E)
+
+
+# --------------- parsing activity stream data utils ---------------
+
+def as_experiment_field(shield_ids):
+    """
+    parse the shield_id field in activity stream data and return standard telemetry
+    experiments field 
+    """
+    try:
+        if shield_ids and shield_ids != 'n/a':
+            experiments = shield_ids.split(';')
+            experiments = [exp for exp in experiments if exp != '']
+            exp_dict = {}
+            for i in experiments: 
+                exp_dict[i.split(':')[0]] = i.split(':')[1]
+            if exp_dict != {}:
+                return exp_dict
+    except:
+        return
+

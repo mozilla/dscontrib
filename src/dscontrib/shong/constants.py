@@ -31,3 +31,12 @@ AS_SNIPPETS_QUERY = """
           AND event in ('IMPRESSION', 'BLOCK', 'CLICK BUTTON', 'DISMISS')
           AND date >= '{START_DT}' AND date <= '{END_DT}'
                     """
+
+# baseline main summary usage columns
+MS_USAGE_COLS = ['active_ticks', 
+                 'search_counts', 
+                 'scalar_parent_browser_engagement_total_uri_count', 
+                 'scalar_parent_browser_engagement_tab_open_event_count', 
+                 'scalar_parent_browser_engagement_window_open_event_count', 
+                 'scalar_parent_browser_search_with_ads', 
+                 'scalar_parent_browser_search_ad_clicks']

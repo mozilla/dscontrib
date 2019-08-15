@@ -108,17 +108,16 @@ def validate_as_data_quality(sql_query, dates, dbutils):
 def as_experiment_field(shield_ids):
     """
     parse the shield_id field in activity stream data and return standard telemetry
-    experiments field 
+    experiments field
     """
     try:
         if shield_ids and shield_ids != 'n/a':
             experiments = shield_ids.split(';')
             experiments = [exp for exp in experiments if exp != '']
             exp_dict = {}
-            for i in experiments: 
+            for i in experiments:
                 exp_dict[i.split(':')[0]] = i.split(':')[1]
             if exp_dict != {}:
                 return exp_dict
-    except:
+    except: #noqa
         return
-

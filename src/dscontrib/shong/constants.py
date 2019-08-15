@@ -33,10 +33,10 @@ AS_SNIPPETS_QUERY = """
                     """
 
 # baseline main summary usage columns
-MS_USAGE_COLS = ['active_ticks', 
-                 'search_counts', 
-                 'scalar_parent_browser_engagement_total_uri_count', 
-                 'scalar_parent_browser_engagement_tab_open_event_count', 
-                 'scalar_parent_browser_engagement_window_open_event_count', 
-                 'scalar_parent_browser_search_with_ads', 
+MS_USAGE_COLS = ['active_ticks',
+                 'search_counts',
+                 'scalar_parent_browser_engagement_total_uri_count',
+                 'scalar_parent_browser_engagement_tab_open_event_count',
+                 'scalar_parent_browser_engagement_window_open_event_count',
+                 'scalar_parent_browser_search_with_ads',
                  'scalar_parent_browser_search_ad_clicks']

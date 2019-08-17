@@ -28,7 +28,7 @@ AS_SNIPPETS_QUERY = """
     SELECT shield_id, impression_id AS client_id, date, event, message_id
     FROM assa_router_events_daily
     WHERE source = 'snippets_user_event'
-          AND event in ('IMPRESSION', 'BLOCK', 'CLICK BUTTON', 'DISMISS')
+          AND event in ('IMPRESSION', 'BLOCK', 'CLICK_BUTTON', 'DISMISS')
           AND date >= '{START_DT}' AND date <= '{END_DT}'
                     """
 

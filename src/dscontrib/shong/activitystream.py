@@ -121,3 +121,50 @@ def as_experiment_field(shield_ids):
                 return exp_dict
     except:  # noqa
         return
+
+
+def as_pref_setting(user_prefs, setting):
+    """
+    parse as user_pref field (in sessions)
+    and return condition for single setting
+        setting is int for setting (see as docs)
+    note - returns null if:
+        1) null value
+        2) value is less then 1
+        3) value can't be coerced into integer
+    """
+    if type(user_prefs) == int and user_prefs >= 0:
+        if user_prefs & setting == 0:
+            return False
+        if user_prefs & setting > 0:
+            return True
+
+
+def as_health_default_homepage(value):
+    """
+    parse value (in as health pings) to see if homepage
+    is set to default
+    note - returns null if:
+        1) null value
+    """
+    if value:
+        value = str(value)
+        if value in ['0', '4', '8', '12']:
+            return True
+        else:
+            return False
+
+
+def as_health_default_newtab(value):
+    """
+    parse value (in as health pings) to see if newtab
+    is set to default
+    note - returns null if:
+        1) null value
+    """
+    if value:
+        value = str(value)
+        if value in ['0', '1', '2', '3']:
+            return True
+        else:
+            return False

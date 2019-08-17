@@ -2,22 +2,39 @@
 # ms_pings_subset_df(df, date_start, total_period, columns=MS_USAGE_COLS, slug=None)
 # as_pings_subset_df(as_df, date_start, total_period, slug=None)
 # experiment_pings(pings_df, membership_df, observation_period)
+# daily_usage_df(df, agg_functions, client_fields=client_fields)
+# agg functions:
+#   all:
+#       - client_fields
+#   main summary:
+#       - daily_usage_aggs
+#   as health:
+#       - as_health_aggs
+#   as sessions:
+#       - as_session_aggs
+#   as clicks:
+#       - as_clicks_aggs
+#   as snippets:
+#       - as_snippets_aggs = get_as_snippets_aggs(message_id=None)
 
 # spark imports
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
 from pyspark.sql.functions import udf
-from pyspark.sql.types import MapType, StringType
+from pyspark.sql.types import MapType, StringType, BooleanType
 
 # local imports
 from .constants import MS_USAGE_COLS
-from .activitystream import as_experiment_field
+from .activitystream import as_experiment_field, as_pref_setting
+from .activitystream import as_health_default_homepage, as_health_default_newtab
 from .util import date_plus_N, date_to_string, string_to_date
 
 
 # fetch spark context
 spark = SparkSession.builder.getOrCreate()
 
+
+# ------------------- experiment membership ------------------
 
 def experiment_membership_df(slug, date_start, enrollment_period, observation_period):
     """
@@ -144,6 +161,8 @@ def experiment_membership_df(slug, date_start, enrollment_period, observation_pe
     return membership_table
 
 
+# ------------------- pre-process pings ------------------
+
 def ms_pings_subset_df(df, date_start, total_period, columns=MS_USAGE_COLS, slug=None):
     """
     get subset of main summary that covers period of interest and columns of interest
@@ -252,7 +271,9 @@ def as_pings_subset_df(as_df, date_start, total_period, slug=None):
     return as_df
 
 
-def experiment_pings(pings_df, membership_df, observation_period):
+# ------------------- keep only experiment pings ------------------
+
+def experiment_pings_df(pings_df, membership_df, observation_period):
     """
     get the subset of pings that are:
         1: in the membership df (by client_id)
@@ -300,3 +321,245 @@ def experiment_pings(pings_df, membership_df, observation_period):
     df = df.drop('client_id_pings')
 
     return df
+
+
+# ------------------- client-daily rollups ------------------
+
+client_fields = [
+        F.last(F.col('enrollment_dt')).alias('enrollment_dt'),
+        F.last(F.col('ping_count_enrollment')).alias('ping_count_enrollment'),
+        F.last(F.col('unenrollment_dt')).alias('unenrollment_dt'),
+        F.last(F.col('ping_count_unenrollment')).alias('ping_count_unenrollment')
+    ]
+
+
+# generic client-daily rollup function
+def daily_usage_df(df, agg_functions, client_fields=client_fields):
+    """
+    generic function for rolling up experiment pings into a
+    (client_id, branch, activity date) level
+        note: the client_fields above are assumed to be provided by default
+        note: you have to provide the agg functions and decide the roll up
+              logic inside them individually
+    """
+    if client_fields:
+        agg_functions = client_fields + agg_functions
+    return df.groupby(['client_id', 'branch', 'activity_dt']).agg(*agg_functions)
+
+
+# ------------------- client-daily agg functions ------------------
+
+# agg functions:
+#
+# all:
+#   client_fields
+# main summary:
+#   - daily_usage_aggs
+# as health:
+#   - as_health_aggs
+# as sessions:
+#   - as_session_aggs
+# as clicks:
+#   - as_clicks_aggs
+# as snippets:
+#   - as_snippets_aggs = get_as_snippets_aggs(message_id=None)
+
+
+# agg fields: main summary usage ------------------
+
+days_used = F.countDistinct(
+                    F.col('activity_dt')).alias('days_used')
+
+active_hours = F.sum(
+                F.coalesce(
+                    F.col('active_ticks'),
+                    F.lit(0)
+                          ) * F.lit(5) / F.lit(3600)).alias('active_hours')
+
+uris = F.sum(
+        F.coalesce(
+            F.col('scalar_parent_browser_engagement_total_uri_count'),
+            F.lit(0)
+                  )).alias('uris')
+
+tabs_opened = F.sum(
+                F.coalesce(
+                    F.col('scalar_parent_browser_engagement_tab_open_event_count'),
+                    F.lit(0)
+                          )).alias('tabs_opened')
+
+windows_opened = F.sum(
+                   F.coalesce(
+                     F.col('scalar_parent_browser_engagement_window_open_event_count'),
+                     F.lit(0)
+                             )).alias('windows_opened')
+
+ping_count = F.count('*').alias('usage_ping_count')
+
+
+daily_usage_aggs = [
+        active_hours,
+        uris,
+        tabs_opened,
+        windows_opened,
+        ping_count
+    ]
+
+# agg fields: as health ping ----------------------------------
+
+schema = BooleanType()
+as_health_default_homepage_udf = udf(as_health_default_homepage, schema)
+
+schema = BooleanType()
+as_health_default_newtab_udf = udf(as_health_default_newtab, schema)
+
+
+# note, we're just checking if these are set to true at ANY point in the day
+# so if a user has it set to true, and then sets it to false, it'll show up at true
+as_health_aggs = [
+    F.max(
+        as_health_default_homepage_udf(F.col('value'))
+        ).alias('has_default_homepage'),
+    F.max(
+        as_health_default_newtab_udf(F.col('value'))
+        ).alias('has_default_newtb'),
+    F.count('value').alias('as_health_ping_count')
+]
+
+# agg fields: as session ping ----------------------------------
+
+schema = BooleanType()
+as_pref_setting_udf = udf(as_pref_setting, schema)
+
+# note, we're just checking if these are set to true at ANY point in the day
+# so if a user has it set to true, and then sets it to false, it'll show up at true
+as_session_aggs = [
+    F.max(
+        as_pref_setting_udf(F.col('user_prefs'), F.lit(1))
+        ).alias('has_search'),
+    F.max(
+        as_pref_setting_udf(F.col('user_prefs'), F.lit(2))
+        ).alias('has_topsites'),
+    F.max(
+        as_pref_setting_udf(F.col('user_prefs'), F.lit(4))
+        ).alias('has_pocket'),
+    F.max(
+        as_pref_setting_udf(F.col('user_prefs'), F.lit(8))
+        ).alias('has_highlights'),
+    F.max(
+        as_pref_setting_udf(F.col('user_prefs'), F.lit(16))
+        ).alias('has_snippets'),
+    F.countDistinct('session_id').alias('as_sessions_count'),
+    F.count('session_id').alias('as_session_ping_count')
+]
+
+
+# agg fields: as click ping ----------------------------------
+
+TOPSITE_CONDITION = (F.col('source') == 'TOP_SITES')
+HIGHLIGHT_CONDITION = (F.col('source') == 'HIGHLIGHTS')
+HOMEPAGE_CONDITION = (F.col('page') == 'about:home')
+NEWTAB_CONDITION = (F.col('page') == 'about:newtab')
+
+# note: don't deal with nulls, if they didn't do it, they get a 0
+# note: the generic click types can include about:welcome, but
+#       the page specific ones don't
+as_clicks_aggs = [
+    # topsites
+    F.sum(F.when(
+            TOPSITE_CONDITION,
+            1).otherwise(0)
+          ).alias('topsite_clicks'),
+    F.sum(F.when(
+            TOPSITE_CONDITION & HOMEPAGE_CONDITION,
+            1).otherwise(0)
+          ).alias('topsite_homepage_clicks'),
+    F.sum(F.when(
+            TOPSITE_CONDITION & NEWTAB_CONDITION,
+            1).otherwise(0)
+          ).alias('topsite_newtab_clicks'),
+    # highlights
+    F.sum(F.when(
+            HIGHLIGHT_CONDITION,
+            1).otherwise(0)
+          ).alias('highlight_clicks'),
+    F.sum(F.when(
+            HIGHLIGHT_CONDITION & HOMEPAGE_CONDITION,
+            1).otherwise(0)
+          ).alias('highlight_homepage_clicks'),
+    F.sum(F.when(
+            HIGHLIGHT_CONDITION & NEWTAB_CONDITION,
+            1).otherwise(0)
+          ).alias('highlight_newtab_clicks'),
+    # combined
+    F.sum(F.when(
+            (TOPSITE_CONDITION | HIGHLIGHT_CONDITION),
+            1).otherwise(0)
+          ).alias('combined_clicks'),
+    F.sum(F.when(
+            (TOPSITE_CONDITION | HIGHLIGHT_CONDITION) & HOMEPAGE_CONDITION,
+            1).otherwise(0)
+          ).alias('combined_homepage_clicks'),
+    F.sum(F.when(
+            (TOPSITE_CONDITION | HIGHLIGHT_CONDITION) & NEWTAB_CONDITION,
+            1).otherwise(0)
+          ).alias('combined_newtab_clicks')
+]
+
+
+# agg fields: as snippet ping ----------------------------------
+
+# note: don't deal with nulls or page, if they did it, they
+# get a 1, otherwise 0
+# note: unlike the other aggs, which are statically defined
+#       this is defined as a function you have to run to
+#       to produce the aggs list
+#       this is because we'll want to parameterize based
+#       on the message_id we are interested in
+def get_as_snippets_aggs(message_id=None):
+    """
+    given a message_id for a snippet, return the agg functions
+    for how many times that snippet was shown, blocked, dismissed,
+    or clicked.
+
+    if no message_id provided, then returns agg functions for all
+    snippets.
+
+    note: returns a list of agg functions for use in:
+            daily_usage_df(df, agg_functions, client_fields=client_fields)
+    """
+    ID_CONDITION = F.lit(True)
+    field_str = ''
+    if message_id:
+        ID_CONDITION = (F.col('message_id') == message_id)
+        field_str = message_id
+
+    IMPRESSION_CONDITION = (F.col('event') == 'IMPRESSION')
+    BLOCK_CONDITION = (F.col('event') == 'BLOCK')
+    DISMISS_CONDITION = (F.col('event') == 'DISMISS')
+    CLICK_BUTTON_CONDITION = (F.col('event') == 'CLICK_BUTTON')
+
+    as_snippets_aggs = [
+        F.sum(F.when(
+            (IMPRESSION_CONDITION & ID_CONDITION),
+            1
+        ).otherwise(0)
+                 ).alias('snippet_impression_' + field_str),
+        F.sum(F.when(
+            (BLOCK_CONDITION & ID_CONDITION),
+            1
+        ).otherwise(0)
+                 ).alias('snippet_block_' + field_str),
+        F.sum(F.when(
+            (DISMISS_CONDITION & ID_CONDITION),
+            1
+        ).otherwise(0)
+                 ).alias('snippet_dismiss_' + field_str),
+        F.sum(F.when(
+            (CLICK_BUTTON_CONDITION & ID_CONDITION),
+            1
+        ).otherwise(0)
+                 ).alias('snippet_click_' + field_str),
+    ]
+
+    return as_snippets_aggs

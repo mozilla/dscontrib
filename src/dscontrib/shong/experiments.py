@@ -298,7 +298,6 @@ def experiment_pings_df(pings_df, membership_df, observation_period):
         top = 0
         bottom = observation_period
 
-
     # rename column so joining is easier
     pings_df = pings_df.withColumn(
         'client_id_pings',

@@ -1,7 +1,7 @@
 # experiment_membership_df(slug, date_start, enrollment_period, observation_period)
 # ms_pings_subset_df(df, date_start, total_period, columns=MS_USAGE_COLS, slug=None)
 # as_pings_subset_df(as_df, date_start, total_period, slug=None)
-# experiment_pings(pings_df, membership_df, observation_period)
+# experiment_pings_df(pings_df, membership_df, observation_period)
 # daily_usage_df(df, agg_functions, client_fields=client_fields)
 # agg functions:
 #   all:
@@ -183,6 +183,10 @@ def ms_pings_subset_df(df, date_start, total_period, columns=MS_USAGE_COLS, slug
     # get date end of maximum possible observation period
     date_obs_end = date_plus_N(date_start, total_period)
 
+    # if we're looking back, switch start and end
+    if date_obs_end > date_start:
+        date_start, date_obs_end = date_obs_end, date_start
+
     # convert everything into s3 date string format
     date_start = date_to_string(date_start)
     date_obs_end = date_to_string(date_obs_end)
@@ -239,6 +243,10 @@ def as_pings_subset_df(as_df, date_start, total_period, slug=None):
     # get date end of maximum possible observation period
     date_obs_end = date_plus_N(date_start, total_period)
 
+    # if we're looking back, switch start and end
+    if date_obs_end > date_start:
+        date_start, date_obs_end = date_obs_end, date_start
+
     # convert everything into as date string format
     date_start = date_to_string(date_start, '%Y-%m-%d')
     date_obs_end = date_to_string(date_obs_end, '%Y-%m-%d')
@@ -282,6 +290,14 @@ def experiment_pings_df(pings_df, membership_df, observation_period):
 
     note: if the pings_df has a branch column, join on (client_id, branch)
     """
+    # if observation period is negative, get the days preceding
+    # if positive, get days following
+    top = observation_period
+    bottom = 0
+    if observation_period < 0:
+        top = 0
+        bottom = observation_period
+
 
     # rename column so joining is easier
     pings_df = pings_df.withColumn(
@@ -300,9 +316,9 @@ def experiment_pings_df(pings_df, membership_df, observation_period):
             (F.col('client_id') == F.col('client_id_pings'))
             & (F.col('branch') == F.col('branch_pings'))
             & (F.datediff(F.col('activity_dt'),
-                          F.col('enrollment_dt')) < observation_period)
+                          F.col('enrollment_dt')) < top)
             & (F.datediff(F.col('activity_dt'),
-                          F.col('enrollment_dt')) > 0),  # no enroll day pings
+                          F.col('enrollment_dt')) > bottom),  # no enroll day pings
             how='left'
             )
         df = df.drop('branch_pings')
@@ -312,9 +328,9 @@ def experiment_pings_df(pings_df, membership_df, observation_period):
             pings_df,
             (F.col('client_id') == F.col('client_id_pings'))
             & (F.datediff(F.col('activity_dt'),
-                          F.col('enrollment_dt')) < observation_period)
+                          F.col('enrollment_dt')) < top)
             & (F.datediff(F.col('activity_dt'),
-                          F.col('enrollment_dt')) > 0),  # no enroll day pings
+                          F.col('enrollment_dt')) > bottom),  # no enroll day pings
             how='left')
 
     # clean up columns
@@ -394,7 +410,7 @@ windows_opened = F.sum(
                      F.lit(0)
                              )).alias('windows_opened')
 
-ping_count = F.count('*').alias('usage_ping_count')
+ping_count = F.count(F.col('activity_dt')).alias('usage_ping_count')
 
 
 daily_usage_aggs = [
@@ -423,7 +439,7 @@ as_health_aggs = [
     F.max(
         as_health_default_newtab_udf(F.col('value'))
         ).alias('has_default_newtb'),
-    F.count('value').alias('as_health_ping_count')
+    F.count('activity_dt').alias('as_health_ping_count')
 ]
 
 # agg fields: as session ping ----------------------------------
@@ -450,7 +466,7 @@ as_session_aggs = [
         as_pref_setting_udf(F.col('user_prefs'), F.lit(16))
         ).alias('has_snippets'),
     F.countDistinct('session_id').alias('as_sessions_count'),
-    F.count('session_id').alias('as_session_ping_count')
+    F.count('activity_dt').alias('as_session_ping_count')
 ]
 
 

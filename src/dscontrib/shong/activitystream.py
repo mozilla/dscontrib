@@ -1,12 +1,11 @@
 # activity stream utils
 
-# pull_tiles_data(sql_query, dbutils)
+# get_tiles_querier(spark, dbutils)
 # validate_as_data_quality(sql_query, dates, dbutils)
 
 
 # activity stream utils: imports
 from pyspark.sql import SparkSession
-import socket
 # local dependences
 from .util import write_parquet_to_s3, read_parquet_from_s3, date_to_string
 from .constants import S3_ROOT
@@ -17,45 +16,37 @@ from .constants import S3_ROOT
 spark = SparkSession.builder.getOrCreate()
 
 
-def pull_tiles_data(sql_query, dbutils):
+def get_tiles_querier(spark, dbutils):
+    """Return a function that queries the Tiles db.
+
+    Example usage::
+
+        query_tiles = get_tiles_querier(spark, dbutils)
+        df = query_tiles('select 1;')
     """
-    provide SQL query, will return spark df of results
-    """
+    def query_tiles(sql_query):
+        tempdir = 's3n://mozilla-databricks-telemetry-test/tiles-redshift/_temp'
+        hostname = 'databricks-tiles-redshift.data.mozaws.net'
+        port = 5432
+        jdbc_url = 'jdbc:postgresql://{h}:{p}/tiles?user={u}&password={pw}'.format(
+            h=hostname, p=port,
+            u=dbutils.secrets.get('tiles-redshift', 'username'),
+            pw=dbutils.secrets.get('tiles-redshift', 'password'),
+        ) + '&ssl=true&sslMode=verify-ca'
 
-    def tiles_redshift_jdbcurl_fetch(dbutils=dbutils): # noqa
-        socket.setdefaulttimeout(3)
-        s = socket.socket()
-        rs = 'databricks-tiles-redshift.data.mozaws.net:5432'
-        hostname, port = rs.split(":")
-        port = int(port)
-        address = socket.gethostbyname(hostname)
-        print(address)
-        try:
-            s.connect((address, port))
-            print("connected")
-        except Exception as e:
-            print("something's wrong with %s:%d. Exception is %s" % (address, port, e))
-        finally:
-            s.close()
-        jdbcurl = ("jdbc:postgresql://{0}:{1}" +
-                   "/tiles?user={2}" +
-                   "&password={3}&ssl=true" +
-                   "&sslMode=verify-ca"
-                   ).format(hostname,
-                            port,
-                            dbutils.secrets.get('tiles-redshift', 'username'),
-                            dbutils.secrets.get('tiles-redshift', 'password'))
-        return jdbcurl
+        return spark.read.format(
+            'com.databricks.spark.redshift'
+        ).option(
+            'forward_spark_s3_credentials', True
+        ).option(
+            'url', jdbc_url
+        ).option(
+            'tempdir', tempdir
+        ).option(
+            'query', sql_query
+        ).load()
 
-    TEMPDIR = "s3n://mozilla-databricks-telemetry-test/tiles-redshift/_temp"
-    JDBC_URL = tiles_redshift_jdbcurl_fetch()
-
-    df = spark.read.format("com.databricks.spark.redshift")\
-                   .option("forward_spark_s3_credentials", True)\
-                   .option("url", JDBC_URL).option("tempdir", TEMPDIR)\
-                   .option("query", sql_query)\
-                   .load()
-    return df
+    return query_tiles
 
 
 def validate_as_data_quality(sql_query, dates, dbutils):
@@ -86,8 +77,9 @@ def validate_as_data_quality(sql_query, dates, dbutils):
         print("--------------------------------------------------")
         print("checking:")
         print(q)
+        query_tiles = get_tiles_querier(spark, dbutils)
         try:
-            test_data = pull_tiles_data(q, dbutils)
+            test_data = query_tiles(q)
             test_count = test_data.count()
 
             write_parquet_to_s3(test_data, TEMP_DATA_DUMP)

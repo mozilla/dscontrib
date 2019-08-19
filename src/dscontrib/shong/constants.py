@@ -39,4 +39,5 @@ MS_USAGE_COLS = ['active_ticks',
                  'scalar_parent_browser_engagement_tab_open_event_count',
                  'scalar_parent_browser_engagement_window_open_event_count',
                  'scalar_parent_browser_search_with_ads',
-                 'scalar_parent_browser_search_ad_clicks']
+                 'scalar_parent_browser_search_ad_clicks',
+                 'active_addons']

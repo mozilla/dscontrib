@@ -52,11 +52,11 @@ def updateTable(bqClient):
             startDate,
             data[product].ds.max() - timedelta(days=1)
         )
-    for model_date in model_dates:
-        writeForecasts(
-            bqClient, table, model_date.date(),
-            _FORECAST_HORIZON, data[product], product
-        )
+        for model_date in model_dates:
+            writeForecasts(
+                bqClient, table, model_date.date(),
+                _FORECAST_HORIZON, data[product], product
+            )
 
 
 def replaceTable(bqClient):

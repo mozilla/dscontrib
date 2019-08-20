@@ -183,18 +183,19 @@ def ms_pings_subset_df(df, date_start, total_period, columns=MS_USAGE_COLS, slug
     # get date end of maximum possible observation period
     date_obs_end = date_plus_N(date_start, total_period)
 
-    # if we're looking back, switch start and end
-    if date_obs_end > date_start:
-        date_start, date_obs_end = date_obs_end, date_start
-
     # convert everything into s3 date string format
-    date_start = date_to_string(date_start)
-    date_obs_end = date_to_string(date_obs_end)
+    date_start_str = date_to_string(date_start)
+    date_obs_end_str = date_to_string(date_obs_end)
+
+    # if we're looking back, switch start and end
+    if date_obs_end < date_start:
+        date_start_str = date_to_string(date_obs_end)
+        date_obs_end_str = date_to_string(date_start)
 
     # ----------------- subset dates and columns -----------------
 
-    df = df.filter("submission_date_s3 >= '%s'" % date_start)
-    df = df.filter("submission_date_s3 <= '%s'" % date_obs_end)
+    df = df.filter("submission_date_s3 >= '%s'" % date_start_str)
+    df = df.filter("submission_date_s3 <= '%s'" % date_obs_end_str)
 
     columns = ['client_id', 'submission_date_s3', 'experiments'] + columns
     df = df.select(columns)
@@ -243,18 +244,19 @@ def as_pings_subset_df(as_df, date_start, total_period, slug=None):
     # get date end of maximum possible observation period
     date_obs_end = date_plus_N(date_start, total_period)
 
-    # if we're looking back, switch start and end
-    if date_obs_end > date_start:
-        date_start, date_obs_end = date_obs_end, date_start
-
     # convert everything into as date string format
-    date_start = date_to_string(date_start, '%Y-%m-%d')
-    date_obs_end = date_to_string(date_obs_end, '%Y-%m-%d')
+    date_start_str = date_to_string(date_start, '%Y-%m-%d')
+    date_obs_end_str = date_to_string(date_obs_end, '%Y-%m-%d')
+
+    # if we're looking back, switch start and end
+    if date_obs_end < date_start:
+        date_start_str = date_to_string(date_obs_end)
+        date_obs_end_str = date_to_string(date_start)
 
     # ----------------- subset dates -----------------
 
-    as_df = as_df.filter("date >= '%s'" % date_start)
-    as_df = as_df.filter("date <= '%s'" % date_obs_end)
+    as_df = as_df.filter("date >= '%s'" % date_start_str)
+    as_df = as_df.filter("date <= '%s'" % date_obs_end_str)
 
     # ----------------- tagged only if slug provided -----------------
 

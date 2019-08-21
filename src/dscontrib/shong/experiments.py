@@ -580,3 +580,137 @@ def get_as_snippets_aggs(message_id=None):
     ]
 
     return as_snippets_aggs
+
+
+# ------------------- full client-daily df ------------------
+
+# we always expect these columns in the df
+# for use with joining
+COMMON_COLUMNS = [
+                 'client_id',
+                 'branch',
+                 'activity_dt',
+                 'enrollment_dt',
+                 'ping_count_enrollment',
+                 'unenrollment_dt',
+                 'ping_count_unenrollment'
+                 ]
+
+
+def null_safe_join(df1, df2, join_cols=COMMON_COLUMNS):
+    """
+    join dfs with the behavior that joining columns that
+    are null will be treated as equal (so we don't get)
+    multiple rows when the dfs have nulls in the same
+    columns
+    """
+
+    def rename_col(df, column_name):
+        df = df.withColumn(column_name + '_temp', F.col(column_name))
+        df = df.drop(F.col(column_name))
+        return df
+
+    def null_safe_condition(column_name):
+        return F.col(column_name).eqNullSafe(F.col(column_name + '_temp'))
+
+    def get_null_safe_conditions(cols):
+        expression = null_safe_condition(cols[0])
+        for column_name in cols[1:]:
+            expression = expression & null_safe_condition(column_name)
+        return expression
+
+    for column_name in join_cols:
+        df2 = rename_col(df2, column_name)
+
+    df = df1.join(df2, get_null_safe_conditions(join_cols), how='full')
+
+    for column_name in join_cols:
+        df = df.withColumn(column_name,
+                           F.coalesce(F.col(column_name),
+                                      F.col(column_name + '_temp')
+                                      )
+                           )    # not sure this is necessary...
+        df = df.drop(F.col(column_name + '_temp'))
+
+    return df
+
+
+def overall_client(dfs, join_cols=COMMON_COLUMNS):
+    """
+    get multiple (client_id, branch, activity_dt) dfs and
+    join into single df
+    """
+
+    base_df = dfs[0]
+
+    for df in dfs[1:]:
+        base_df = null_safe_join(base_df, df, join_cols)
+
+    return base_df
+
+
+def cleanup_no_activity_rows(df, activity_field='activity_dt'):
+    """
+    each df that was joined can produce "empty" activity rows for
+    clients that didn't have activity in that df's activity
+    this can blow up so you have "empty" rows for clients that
+    did have activity in one of the dfs. this just cleans it up
+    so that (client_id, branch) combos that have zero activity
+    only get one row
+    """
+
+    df_has_activity = df.filter("{} is not null".format(activity_field))\
+                        .select([
+                            F.col('client_id').alias('client_id_temp'),
+                            F.col('branch').alias('branch_temp')
+                                ]).distinct()
+
+    df = df.join(df_has_activity,
+                 F.isnull(F.col('activity_dt'))
+                 & (F.col('client_id') == F.col('client_id_temp'))
+                 & (F.col('branch') == F.col('branch_temp')),
+                 how='left'
+                 )
+    df = df.filter(F.isnull(F.col('client_id_temp')))
+    df = df.drop('client_id_temp').drop('branch_temp')
+
+    return df
+
+
+NULLABLE_COLS = [
+    'client_id',
+    'branch',
+    'activity_dt',
+    'enrollment_dt',
+    'ping_count_enrollment',
+    'unenrollment_dt',
+    'ping_count_unenrollment',
+    'has_default_homepage',
+    'has_default_newtb',
+    'has_search',
+    'has_topsites',
+    'has_pocket',
+    'has_highlights',
+    'has_snippets'
+]
+
+
+def cleanup_nulls_df(df, nullable_cols=NULLABLE_COLS):
+    """
+    fill nulls with 0 for all columns except for the nullable cols
+    """
+
+    def clean_nulls(column, clean=True):
+        if clean:
+            return F.coalesce(F.col(column), F.lit(0)).alias(column)
+        else:
+            return F.col(column)
+
+    cleaned_cols = []
+    for col in df.columns:
+        if col in nullable_cols:
+            cleaned_cols.append(clean_nulls(col, False))
+        else:
+            cleaned_cols.append(clean_nulls(col, True))
+
+    return df.select(cleaned_cols)

@@ -594,7 +594,7 @@ COMMON_COLUMNS = [
                  'ping_count_enrollment',
                  'unenrollment_dt',
                  'ping_count_unenrollment'
-                 ] 
+                 ]
 
 
 def null_safe_join(df1, df2, join_cols=COMMON_COLUMNS):
@@ -614,10 +614,10 @@ def null_safe_join(df1, df2, join_cols=COMMON_COLUMNS):
         return F.col(column_name).eqNullSafe(F.col(column_name + '_temp'))
 
     def get_null_safe_conditions(cols):
-            expression = null_safe_condition(cols[0])
-            for column_name in cols[1:]:
-                expression = expression & null_safe_condition(column_name)
-            return expression
+        expression = null_safe_condition(cols[0])
+        for column_name in cols[1:]:
+            expression = expression & null_safe_condition(column_name)
+        return expression
 
     for column_name in join_cols:
         df2 = rename_col(df2, column_name)
@@ -629,11 +629,11 @@ def null_safe_join(df1, df2, join_cols=COMMON_COLUMNS):
                            F.coalesce(F.col(column_name),
                                       F.col(column_name + '_temp')
                                       )
-                          )    # not sure this is necessary...
+                           )    # not sure this is necessary...
         df = df.drop(F.col(column_name + '_temp'))
 
     return df
-    
+
 
 def overall_client(dfs, join_cols=COMMON_COLUMNS):
     """
@@ -649,8 +649,7 @@ def overall_client(dfs, join_cols=COMMON_COLUMNS):
     return base_df
 
 
-
-def cleanup_no_activity_rows(df, activity_field = 'activity_dt'):
+def cleanup_no_activity_rows(df, activity_field='activity_dt'):
     """
     each df that was joined can produce "empty" activity rows for
     clients that didn't have activity in that df's activity
@@ -662,14 +661,14 @@ def cleanup_no_activity_rows(df, activity_field = 'activity_dt'):
 
     df_has_activity = df.filter("{} is not null".format(activity_field))\
                         .select([
-                            F.col('client_id').alias('client_id_temp'), 
+                            F.col('client_id').alias('client_id_temp'),
                             F.col('branch').alias('branch_temp')
                                 ]).distinct()
 
     df = df.join(df_has_activity,
-                 F.isnull(F.col('activity_dt')) 
+                 F.isnull(F.col('activity_dt'))
                  & (F.col('client_id') == F.col('client_id_temp'))
-                 & (F.col('branch') == F.col('branch_temp')), 
+                 & (F.col('branch') == F.col('branch_temp')),
                  how='left'
                  )
     df = df.filter(F.isnull(F.col('client_id_temp')))

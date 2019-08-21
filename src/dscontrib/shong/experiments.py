@@ -250,8 +250,8 @@ def as_pings_subset_df(as_df, date_start, total_period, slug=None):
 
     # if we're looking back, switch start and end
     if date_obs_end < date_start:
-        date_start_str = date_to_string(date_obs_end)
-        date_obs_end_str = date_to_string(date_start)
+        date_start_str = date_to_string(date_obs_end, '%Y-%m-%d')
+        date_obs_end_str = date_to_string(date_start, '%Y-%m-%d')
 
     # ----------------- subset dates -----------------
 

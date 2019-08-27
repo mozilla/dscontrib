@@ -49,7 +49,7 @@ def createDataFile(
                 0
             ).alias("is_active_active"),
             F.to_date(_COL_PC_DATE).alias("profile_creation_date")
-        ] + _MAP_NATURAL_DIMENSIONS.keys()
+        ] + list(_MAP_NATURAL_DIMENSIONS.keys())
     ).filter(
         (_DATE_PARSED.between(start_date, end_date)) &
         (_COL_SAMPLE < sample_percent)

@@ -101,7 +101,53 @@ def metricMAU(data, needed_dimension_variables, feature_col, sampling_multiplier
     return data
 
 
-def metricDaysPerWeek(
+# This function won't work with gudnightly currently and is a utility for
+# other analysis.
+def metricActiveHoursPerWeekPerProfileDay(
+    data, needed_dimension_variables, feature_col, sampling_multiplier
+):
+    all_user_days = data.select("id").distinct().crossJoin(
+        data.select("date").distinct()
+    )
+    intermediate_table1 = data.filter(
+        col(feature_col) > 0
+    ).select(
+        ["id", "date", feature_col]
+    ).distinct(
+    )
+
+    intermediate_table1 = intermediate_table1.alias("intermediate_table")
+    all_user_days = all_user_days.alias("all_user_days")
+
+    # Augment activity table to include non-active days
+    intermediate_table2 = intermediate_table1.join(
+        all_user_days,
+        ['id', 'date'],
+        'outer'
+    ).withColumn(
+        "n_", F.coalesce("intermediate_table." + feature_col, lit(0))
+    ).drop(
+        feature_col
+    ).withColumnRenamed(
+        "n_", feature_col
+    )
+
+    # Calculate active hours for each profile-day
+    windowSpec = Window.partitionBy(
+        [intermediate_table2.id]
+    ).orderBy(
+        intermediate_table2.date
+    ).rowsBetween(
+        -6, 0
+    )
+
+    active_hours_table = intermediate_table2.withColumn(
+        "hours", F.sum(intermediate_table2["active_hours_sum"]).over(windowSpec)
+    )
+    return active_hours_table
+
+
+def metricDaysPerWeekPerProfileDay(
     data, needed_dimension_variables, feature_col, sampling_multiplier
 ):
     all_user_days = data.select("id").distinct().crossJoin(
@@ -152,6 +198,15 @@ def metricDaysPerWeek(
         intermediate_table3 = intermediate_table3.withColumn(
             v, F.last(v, True).over(windowSpec)
         )
+    return intermediate_table3
+
+
+def metricDaysPerWeek(
+    data, needed_dimension_variables, feature_col, sampling_multiplier
+):
+    intermediate_table3 = metricDaysPerWeekPerProfileDay(
+        data, needed_dimension_variables, feature_col, sampling_multiplier
+    )
 
     # Reduce to mean active days per week per date
     intermediate_table4 = intermediate_table3.filter(

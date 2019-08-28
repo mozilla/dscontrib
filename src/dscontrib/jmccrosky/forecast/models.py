@@ -97,5 +97,5 @@ def dataFilter(data, product):
     if product in anomalyDates:
         anomalyStartDate = anomalyDates[product][0]  # noqa: F841
         anomalyEndDate = anomalyDates[product][1]  # noqa: F841
-        temp = temp.query("(ds < @anomalyStartDate) | (ds > @anomalyStartDate)")
+        temp = temp.query("(ds < @anomalyStartDate) | (ds > @anomalyEndDate)")
     return temp

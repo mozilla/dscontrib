@@ -44,10 +44,16 @@ def setupModels(years):
         holidays=getHolidays(years)
     )
     models["nondesktop_global"] = Prophet()
-    models["fxa_global"] = Prophet()
+    models["fxa_global"] = Prophet(
+        changepoint_range=0.8,
+        changepoint_prior_scale=0.02,
+    )
     models["desktop_tier1"] = Prophet()
     models["nondesktop_tier1"] = Prophet()
-    models["fxa_tier1"] = Prophet()
+    models["fxa_tier1"] = Prophet(
+        changepoint_range=0.7,
+        changepoint_prior_scale=0.02,
+    )
     models["Fennec Android"] = Prophet(
         changepoint_prior_scale=0.0005,
         seasonality_prior_scale=0.001,
@@ -75,6 +81,8 @@ def setupModels(years):
 def dataFilter(data, product):
     startDates = {
         "desktop_global": s2d('2016-04-08'),
+        "fxa_global": s2d('2018-03-20'),
+        "fxa_tier1": s2d('2018-03-20'),
         "Fennec Android": s2d('2017-03-04'),
         "Focus iOS": s2d('2017-12-06'),
         "Focus Android": s2d('2017-07-17'),

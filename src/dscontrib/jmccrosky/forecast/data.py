@@ -69,10 +69,13 @@ def getKPIData(bqClient, types=list(_kpi_queries.keys())):
 _nondesktop_query = '''
     SELECT
         submission_date as date,
-        mau AS global_mau,
+        SUM(mau) AS global_mau,
         product
     FROM
         `moz-fx-data-derived-datasets.telemetry.firefox_nondesktop_exact_mau28_by_product_v1`
+    GROUP BY
+        submission_date,
+        product
     ORDER BY
         date
     '''

@@ -21,7 +21,7 @@ def calcMRE(true, predicted):
 
 
 def calcLogRatio(true, predicted):
-    logratio = np.mean(np.log(true) - np.log(predicted))
+    logratio = np.mean(np.log(predicted) - np.log(true))
     return logratio
 
 

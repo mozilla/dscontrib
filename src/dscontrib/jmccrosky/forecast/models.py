@@ -45,20 +45,14 @@ def setupModels(years):
     )
     models["nondesktop_global"] = Prophet()
     models["fxa_global"] = Prophet(
-        yearly_seasonality=20,
         changepoint_range=0.8,
-        seasonality_mode='multiplicative',
         changepoint_prior_scale=0.02,
-        seasonality_prior_scale=0.0005,
     )
     models["desktop_tier1"] = Prophet()
     models["nondesktop_tier1"] = Prophet()
     models["fxa_tier1"] = Prophet(
-        yearly_seasonality=20,
         changepoint_range=0.8,
-        seasonality_mode='multiplicative',
         changepoint_prior_scale=0.02,
-        seasonality_prior_scale=0.0005,
     )
     models["Fennec Android"] = Prophet(
         changepoint_prior_scale=0.0005,

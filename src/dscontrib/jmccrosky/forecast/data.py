@@ -70,6 +70,7 @@ _nondesktop_query = '''
     SELECT
         submission_date as date,
         SUM(mau) AS global_mau,
+        SUM(IF(country IN ('US', 'FR', 'DE', 'GB', 'CA'), mau, 0)) AS tier1_mau,
         product
     FROM
         `moz-fx-data-derived-datasets.telemetry.firefox_nondesktop_exact_mau28_by_product_v1`
@@ -93,6 +94,40 @@ def getNondesktopData(bqClient):
         ].rename(
             index=str, columns={"date": "ds", "global_mau": "y"}
         )
+    for k in data:
+        data[k]['ds'] = pd.to_datetime(data[k]['ds']).dt.date
+    return data
+
+
+_nondesktop_nofire_query = '''
+    SELECT
+        submission_date as date,
+        SUM(mau) AS global_mau
+    FROM
+        `moz-fx-data-derived-datasets.telemetry.firefox_nondesktop_exact_mau28_by_product_v1`
+    WHERE
+        product != "FirefoxForFireTV"
+    GROUP BY
+        submission_date,
+        product
+    ORDER BY
+        date
+    '''
+
+
+def getNondesktopNoFireData(bqClient):
+    data = {}
+    rawData = bqClient.query(_nondesktop_nofire_query).to_dataframe()
+    data['nondesktop_nofire_global'] = rawData[
+        ["date", "global_mau"]
+    ].rename(
+        index=str, columns={"date": "ds", "global_mau": "y"}
+    )
+    data['nondesktop_nofire_tier1'] = rawData[
+        ["date", "tier1_mau"]
+    ].rename(
+        index=str, columns={"date": "ds", "tier1_mau": "y"}
+    )
     for k in data:
         data[k]['ds'] = pd.to_datetime(data[k]['ds']).dt.date
     return data

@@ -75,6 +75,22 @@ def setupModels(years):
         yearly_seasonality=True
     )
     models["FirefoxConnect"] = Prophet(changepoint_prior_scale=0.0005)
+    models["nondesktop_nofire_global"] = Prophet(
+        yearly_seasonality=20,
+        changepoint_range=0.75,
+        seasonality_mode='multiplicative',
+        changepoint_prior_scale=0.008,
+        seasonality_prior_scale=0.20,
+        holidays=getHolidays(years)
+    )
+    models["nondesktop_nofire_tier1"] = Prophet(
+        yearly_seasonality=20,
+        changepoint_range=0.75,
+        seasonality_mode='multiplicative',
+        changepoint_prior_scale=0.008,
+        seasonality_prior_scale=0.20,
+        holidays=getHolidays(years)
+    )
     return models
 
 
@@ -91,6 +107,8 @@ def dataFilter(data, product):
         "Firefox Lite": s2d('2017-03-04'),
         "FirefoxForFireTV": s2d('2018-02-04'),
         "FirefoxConnect": s2d('2018-10-10'),
+        "nondesktop_nofire_global": s2d('2017-01-30'),
+        "nondesktop_nofire_tier1": s2d('2017-01-30'),
     }
 
     anomalyDates = {

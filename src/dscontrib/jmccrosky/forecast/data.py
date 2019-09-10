@@ -109,8 +109,7 @@ _nondesktop_nofire_query = '''
     WHERE
         product != "FirefoxForFireTV"
     GROUP BY
-        submission_date,
-        product
+        submission_date
     ORDER BY
         date
     '''

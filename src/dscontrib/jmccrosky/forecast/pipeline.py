@@ -26,6 +26,8 @@ _FIRST_MODEL_DATES = {
       'desktop_tier1': pd.to_datetime("2019-03-08").date(),
       'fxa_tier1': pd.to_datetime("2019-03-08").date(),
       'Focus Android': pd.to_datetime("2019-03-08").date(),
+      'nondesktop_nofire_global': pd.to_datetime("2019-03-08").date(),
+      'nondesktop_nofire_tier1': pd.to_datetime("2019-03-08").date(),
 }
 _FORECAST_HORIZON = pd.to_datetime("2019-12-31").date()
 _BQ_PROJECT = "moz-fx-data-derived-datasets"
@@ -65,8 +67,10 @@ def updateTable(bqClient):
 def replaceTable(bqClient):
     kpiData = getKPIData(bqClient)
     nondesktopData = getNondesktopData(bqClient)
+    nondesktopnofireData = getNondesktopNoFireData(bqClient)
     data = kpiData
     data.update(nondesktopData)
+    data.update(nondesktopnofireData)
     table = resetOuputTable(bqClient, _BQ_PROJECT, _BQ_DATASET, _BQ_TABLE)
     for product in data.keys():
         model_dates = pd.date_range(

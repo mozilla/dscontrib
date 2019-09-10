@@ -7,6 +7,7 @@ from datetime import timedelta
 
 from dscontrib.jmccrosky.forecast.output import resetOuputTable, writeForecasts
 from dscontrib.jmccrosky.forecast.data import getKPIData, getNondesktopData
+from dscontrib.jmccrosky.forecast.data import getNondesktopNoFireData
 from dscontrib.jmccrosky.forecast.utils import getLatestDate
 
 
@@ -35,8 +36,10 @@ _BQ_TABLE = "jmccrosky_test"
 def updateTable(bqClient):
     kpiData = getKPIData(bqClient)
     nondesktopData = getNondesktopData(bqClient)
+    nondesktopnofireData = getNondesktopNoFireData(bqClient)
     data = kpiData
     data.update(nondesktopData)
+    data.update(nondesktopnofireData)
     dataset = bqClient.dataset(_BQ_DATASET)
     tableref = dataset.table(_BQ_TABLE)
     table = bqClient.get_table(tableref)

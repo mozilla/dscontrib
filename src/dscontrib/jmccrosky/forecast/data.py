@@ -70,7 +70,6 @@ _nondesktop_query = '''
     SELECT
         submission_date as date,
         SUM(mau) AS global_mau,
-        SUM(IF(country IN ('US', 'FR', 'DE', 'GB', 'CA'), mau, 0)) AS tier1_mau,
         product
     FROM
         `moz-fx-data-derived-datasets.telemetry.firefox_nondesktop_exact_mau28_by_product_v1`
@@ -102,7 +101,9 @@ def getNondesktopData(bqClient):
 _nondesktop_nofire_query = '''
     SELECT
         submission_date as date,
-        SUM(mau) AS global_mau
+        SUM(mau) AS global_mau,
+        SUM(tier1_mau) AS tier1_mau
+
     FROM
         `moz-fx-data-derived-datasets.telemetry.firefox_nondesktop_exact_mau28_by_product_v1`
     WHERE

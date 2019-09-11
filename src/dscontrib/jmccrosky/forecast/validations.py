@@ -8,8 +8,7 @@ from datetime import timedelta
 from collections import defaultdict
 from plotly.offline import plot
 import plotly.graph_objs as go
-from dscontrib.jmccrosky.forecast.utils import s2d, matchDates, getLayout
-from dscontrib.jmccrosky.forecast.utils import GenerateForecastData
+from dscontrib.jmccrosky.forecast.utils import matchDates, getLayout
 
 
 def _getSinglePrediction(forecastData, asofdate, targetDate):

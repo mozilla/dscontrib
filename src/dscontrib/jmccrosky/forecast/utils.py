@@ -82,3 +82,27 @@ def getLayout(title, xaxis, yaxis):
             )
         ),
     )
+
+
+def GenerateForecastData(modelGen, metricData, asofdateRange, targetDateRange):
+    data = pd.DataFrame({
+        "ds": [],
+        "asofdate": [],
+        "yhat": [],
+        "yhat_lower": [],
+        "yhat_upper": [],
+    })
+    for asofdate in asofdateRange:
+        model = modelGen()
+        model.fit(metricData.query("ds <= @asofdate"))
+        forecast_period = pd.DataFrame({'ds': targetDateRange})
+        forecast = model.predict(forecast_period)
+        data = pd.concat([data, pd.DataFrame({
+            "ds": forecast.ds,
+            "asofdate": asofdate,
+            "yhat": forecast.yhat,
+            "yhat_lower": forecast.yhat_lower,
+            "yhat_upper": forecast.yhat_upper,
+        })], ignore_index=True)
+    data['ds'] = pd.to_datetime(data['ds']).dt.date
+    return data

@@ -131,3 +131,41 @@ def getNondesktopNoFireData(bqClient):
     for k in data:
         data[k]['ds'] = pd.to_datetime(data[k]['ds']).dt.date
     return data
+
+
+_forecast_query = '''
+    SELECT
+        date,
+        asofdate,
+        mau,
+        low90,
+        high90
+    FROM
+        `{project}.{dataset}.{table}`
+    WHERE
+        datasource = '{product}'
+        AND type = 'forecast'
+        AND asofdate BETWEEN "{asofdateStart}" AND "{asofdateEnd}"
+    ORDER BY
+        date
+    '''
+
+
+def getForecastData(
+    bqClient, project, dataset, table, product, asofdateStart, asofdateEnd
+):
+    rawData = bqClient.query(_forecast_query.format(
+        project=project,
+        dataset=dataset,
+        table=table,
+        product=product,
+        asofdateStart=asofdateStart,
+        asofdateEnd=asofdateEnd,
+    )).to_dataframe().rename(columns={
+        "date": "ds",
+        "mau": "yhat",
+        "high90": "yhat_upper",
+        "low90": "yhat_lower",
+    })
+    rawData['ds'] = pd.to_datetime(rawData['ds']).dt.date
+    return rawData

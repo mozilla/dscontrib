@@ -13,7 +13,10 @@ from dscontrib.jmccrosky.forecast.utils import matchDates, getLayout
 
 def _getSinglePrediction(forecastData, asofdate, targetDate):
     temp = forecastData.query("asofdate == @asofdate & ds == @targetDate")
-    return (temp.yhat.item(), temp.yhat_lower.item(), temp.yhat_upper.item())
+    if len(temp.yhat) == 1:
+        return (temp.yhat.item(), temp.yhat_lower.item(), temp.yhat_upper.item())
+    else:
+        return None
 
 
 def ValidateStability(forecastDataDict, asofdateRange, targetDate, suppressCI=False):
@@ -22,12 +25,11 @@ def ValidateStability(forecastDataDict, asofdateRange, targetDate, suppressCI=Fa
         dates = []
         values = []
         for asofdate in asofdateRange:
-            predictions = []
-            predictions.append(_getSinglePrediction(
+            prediction = _getSinglePrediction(
                 forecastDataDict[forecastDataKey], asofdate, targetDate)
-            )
-            values.append(predictions)
-            dates.append(asofdate)
+            if prediction is not None:
+                values.append([prediction])
+                dates.append(asofdate)
         data[forecastDataKey] = pd.DataFrame({
             "date": dates,
             "Predicted MAU for {}".format(targetDate): [i[0][0] for i in values],

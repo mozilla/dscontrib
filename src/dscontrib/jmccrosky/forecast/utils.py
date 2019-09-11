@@ -63,9 +63,7 @@ def s2d(stringDate):
 
 
 def matchDates(data, forecast):
-    temp = forecast.copy()
-    temp['ds'] = temp.ds.dt.date
-    return data.merge(temp, on="ds", how="inner")
+    return data.merge(forecast, on="ds", how="inner")
 
 
 def getLayout(title, xaxis, yaxis):

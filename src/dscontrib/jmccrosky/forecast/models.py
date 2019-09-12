@@ -39,8 +39,8 @@ def setupModels(years):
         yearly_seasonality=20,
         changepoint_range=0.7,
         seasonality_mode='multiplicative',
-        changepoint_prior_scale=0.008,
-        seasonality_prior_scale=0.20,
+        changepoint_prior_scale=0.015,
+        seasonality_prior_scale=0.25,
         holidays=getHolidays(years)
     )
     models["nondesktop_global"] = Prophet()

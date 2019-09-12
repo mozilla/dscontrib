@@ -153,7 +153,7 @@ def ValidateTraces(modelGen, data, trainingEndDateRange, metric, metricName):
 
 
 def _accumulateHorizonMetrics(actualData, forecastData, asofdate, metric, metricValues):
-    forecast = forecastData.query("asofdate == @asofdate")
+    forecast = forecastData.query("asofdate == @asofdate & ds > @asofdate")
     matched = matchDates(
         actualData,
         forecast

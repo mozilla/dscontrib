@@ -48,14 +48,15 @@ def writeForecasts(bigquery_client, table, modelDate, forecastEnd, data, product
     forecastSamples = models[product].sample_posterior_predictive(
         models[product].setup_dataframe(forecastPeriod)
     )
+    forecast = models[product].predict(forecastPeriod)
     outputData = {
         "asofdate": modelDate,
         "datasource": product,
-        "date": forecastPeriod['ds'].dt.date,
+        "date": forecast.ds,
         "type": "forecast",
-        "mau": np.mean(forecastSamples['yhat'], axis=1),
-        "low90": np.nanpercentile(forecastSamples['yhat'], 5, axis=1),
-        "high90": np.nanpercentile(forecastSamples['yhat'], 95, axis=1),
+        "mau": forecast.yhat,
+        "low90": forecast.yhat_lower,
+        "high90": forecast.yhat_upper,
     }
     outputData.update({
         "p{}".format(q): np.nanpercentile(forecastSamples['yhat'], q, axis=1)

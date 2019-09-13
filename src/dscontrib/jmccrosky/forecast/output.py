@@ -66,6 +66,7 @@ def writeForecasts(bigquery_client, table, modelDate, forecastEnd, data, product
       "asofdate", "datasource", "date", "type", "mau", "low90", "high90",
       "p10", "p20", "p30", "p40", "p50", "p60", "p70", "p80", "p90"
     ]]
+    outputData['date'] = pd.to_datetime(outputData['date']).dt.date
     errors = bigquery_client.insert_rows(
         table,
         list(outputData.itertuples(index=False, name=None))

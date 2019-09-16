@@ -71,7 +71,7 @@ def ValidateStability(forecastDataDict, asofdateRange, targetDate, suppressCI=Fa
 
 
 def _getMetricForRange(actualData, forecastData, asofdate, metric):
-    forecast = forecastData.query("asofdate == @asofdate")
+    forecast = forecastData.query("asofdate == @asofdate & ds > @asofdate")
     matched = matchDates(
         actualData,
         forecast

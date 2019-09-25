@@ -32,7 +32,7 @@ _FIRST_MODEL_DATES = {
 _FORECAST_HORIZON = pd.to_datetime("2019-12-31").date()
 _BQ_PROJECT = "moz-fx-data-derived-datasets"
 _BQ_DATASET = "analysis"
-_BQ_TABLE = "jmccrosky_test"
+_BQ_TABLE = "simpleprophet_forecasts"
 
 
 def updateTable(bqClient):

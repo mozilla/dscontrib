@@ -29,7 +29,7 @@ _FIRST_MODEL_DATES = {
       'nondesktop_nofire_global': pd.to_datetime("2019-03-08").date(),
       'nondesktop_nofire_tier1': pd.to_datetime("2019-03-08").date(),
 }
-_FORECAST_HORIZON = pd.to_datetime("2019-12-31").date()
+_FORECAST_HORIZON = pd.to_datetime("2020-12-31").date()
 _BQ_PROJECT = "moz-fx-data-derived-datasets"
 _BQ_DATASET = "analysis"
 _BQ_TABLE = "jmccrosky_test"

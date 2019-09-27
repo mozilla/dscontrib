@@ -106,18 +106,21 @@ def MetricPlot(
             cur_buckets1 = [[metricAggregations[metric](
                 cur_data.query(
                     "bucket==@i and {}==@d".format(date_var) +
-                    getPandasDimensionQuery(comparison_dimensions[0])
+                    getPandasDimensionQuery(comparison_dimensions[0]),
+                    local_dict=dict(d=d)
                 )[feature_col]
             ) for i in buckets_list] for d in dates]
             cur_all2 = [metricAggregations[metric](
                 cur_data.query(
                     "bucket=='ALL' and {}==@d".format(date_var) +
-                    getPandasDimensionQuery(comparison_dimensions[1])
+                    getPandasDimensionQuery(comparison_dimensions[1]),
+                    local_dict=dict(d=d)
                 )[feature_col]) for d in dates]
             cur_buckets2 = [[metricAggregations[metric](
                 cur_data.query(
                     "bucket==@i and {}==@d".format(date_var) +
-                    getPandasDimensionQuery(comparison_dimensions[1])
+                    getPandasDimensionQuery(comparison_dimensions[1]),
+                    local_dict=dict(d=d)
                 )[feature_col]
             ) for i in buckets_list] for d in dates]
         else:
@@ -130,7 +133,8 @@ def MetricPlot(
             cur_buckets = [[metricAggregations[metric](
                 cur_data.query(
                     "bucket==@i and {}==@d".format(date_var) +
-                    getPandasDimensionQuery(dim)
+                    getPandasDimensionQuery(dim),
+                    local_dict=dict(d=d)
                 )[feature_col]
             ) for i in buckets_list] for d in dates]
 
@@ -151,7 +155,8 @@ def MetricPlot(
             ) for d in (date_offset(dates))]
             old_buckets = [[metricAggregations[metric](old_data.query(
                 "bucket==@i and {}==@d".format(date_var) +
-                getPandasDimensionQuery(dim))[feature_col]
+                getPandasDimensionQuery(dim))[feature_col],
+                local_dict=dict(d=d)
             ) for i in buckets_list] for d in (date_offset(dates))]
 
         if "Normalize" in transformations:

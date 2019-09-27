@@ -107,7 +107,7 @@ def MetricPlot(
                 cur_data.query(
                     "bucket==@i and {}==@d".format(date_var) +
                     getPandasDimensionQuery(comparison_dimensions[0]),
-                    local_dict=dict(d=d)
+                    local_dict=dict(d=d, i=i)
                 )[feature_col]
             ) for i in buckets_list] for d in dates]
             cur_all2 = [metricAggregations[metric](
@@ -120,7 +120,7 @@ def MetricPlot(
                 cur_data.query(
                     "bucket==@i and {}==@d".format(date_var) +
                     getPandasDimensionQuery(comparison_dimensions[1]),
-                    local_dict=dict(d=d)
+                    local_dict=dict(d=d, i=i)
                 )[feature_col]
             ) for i in buckets_list] for d in dates]
         else:
@@ -134,7 +134,7 @@ def MetricPlot(
                 cur_data.query(
                     "bucket==@i and {}==@d".format(date_var) +
                     getPandasDimensionQuery(dim),
-                    local_dict=dict(d=d)
+                    local_dict=dict(d=d, i=i)
                 )[feature_col]
             ) for i in buckets_list] for d in dates]
 
@@ -155,8 +155,8 @@ def MetricPlot(
             ) for d in (date_offset(dates))]
             old_buckets = [[metricAggregations[metric](old_data.query(
                 "bucket==@i and {}==@d".format(date_var) +
-                getPandasDimensionQuery(dim))[feature_col],
-                local_dict=dict(d=d)
+                getPandasDimensionQuery(dim),
+                local_dict=dict(d=d, i=i))[feature_col]
             ) for i in buckets_list] for d in (date_offset(dates))]
 
         if "Normalize" in transformations:

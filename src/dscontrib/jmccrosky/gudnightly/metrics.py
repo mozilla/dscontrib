@@ -5,6 +5,7 @@
 from pyspark.sql import functions as F
 from pyspark.sql.functions import col, lit
 from pyspark.sql import Window
+from pyspark.sql.types import IntegerType
 
 from dscontrib.jmccrosky.gudnightly.utils import jackknifeCountCI, jackknifeMeanCI
 
@@ -104,7 +105,8 @@ def metricMAU(data, needed_dimension_variables, feature_col, sampling_multiplier
 # This function won't work with gudnightly currently and is a utility for
 # other analysis.
 def metricActiveHoursPerWeekPerProfileDay(
-    data, needed_dimension_variables, feature_col, sampling_multiplier
+    data, needed_dimension_variables, feature_col, sampling_multiplier, days=7,
+    include_day_of_week=False
 ):
     all_user_days = data.select("id").distinct().crossJoin(
         data.select("date").distinct()
@@ -132,23 +134,47 @@ def metricActiveHoursPerWeekPerProfileDay(
         "n_", feature_col
     )
 
+    if include_day_of_week:
+        intermediate_table2 = intermediate_table2.withColumn(
+            "weekday_hours_sum",
+            F.when(
+                F.date_format('date', 'u').cast(IntegerType()) <= 5,
+                col("active_hours_sum")
+            ).otherwise(0)
+        ).withColumn(
+            "weekend_hours_sum",
+            F.when(
+                F.date_format('date', 'u').cast(IntegerType()) >= 6,
+                col("active_hours_sum")
+            ).otherwise(0)
+        )
+
     # Calculate active hours for each profile-day
     windowSpec = Window.partitionBy(
         [intermediate_table2.id]
     ).orderBy(
         intermediate_table2.date
     ).rowsBetween(
-        -6, 0
+        1 - days, 0
     )
 
     active_hours_table = intermediate_table2.withColumn(
         "hours", F.sum(intermediate_table2["active_hours_sum"]).over(windowSpec)
     )
+    if include_day_of_week:
+        active_hours_table = active_hours_table.withColumn(
+            "weekday_hours",
+            F.sum(intermediate_table2["weekday_hours_sum"]).over(windowSpec)
+        ).withColumn(
+            "weekend_hours",
+            F.sum(intermediate_table2["weekend_hours_sum"]).over(windowSpec)
+        )
     return active_hours_table
 
 
 def metricDaysPerWeekPerProfileDay(
-    data, needed_dimension_variables, feature_col, sampling_multiplier
+    data, needed_dimension_variables, feature_col, sampling_multiplier, days=7,
+    include_day_of_week=False
 ):
     all_user_days = data.select("id").distinct().crossJoin(
         data.select("date").distinct()
@@ -177,13 +203,32 @@ def metricDaysPerWeekPerProfileDay(
         "n_", feature_col
     )
 
+    if include_day_of_week:
+        intermediate_table2 = intermediate_table2.withColumn(
+            feature_col + "_weekend",
+            F.when(
+                F.date_format('date', 'u').cast(IntegerType()) >= 6,
+                col(feature_col)
+            ).otherwise(
+                0
+            )
+        ).withColumn(
+            feature_col + "_weekday",
+            F.when(
+                F.date_format('date', 'u').cast(IntegerType()) <= 5,
+                col(feature_col)
+            ).otherwise(
+                0
+            )
+        )
+
     # Calculate active days per week for each profile-day
     windowSpec = Window.partitionBy(
         [intermediate_table2.id]
     ).orderBy(
         intermediate_table2.date
     ).rowsBetween(
-        -6, 0
+        1 - days, 0
     )
 
     intermediate_table3 = intermediate_table2.withColumn(
@@ -193,6 +238,22 @@ def metricDaysPerWeekPerProfileDay(
     ).withColumnRenamed(
         "n_", feature_col
     )
+    if include_day_of_week:
+        intermediate_table3 = intermediate_table3.withColumn(
+            "n_", F.sum(intermediate_table2[feature_col + "_weekend"]).over(windowSpec)
+        ).drop(
+            feature_col + "_weekend"
+        ).withColumnRenamed(
+            "n_", feature_col + "_weekend"
+        )
+
+        intermediate_table3 = intermediate_table3.withColumn(
+            "n_", F.sum(intermediate_table2[feature_col + "_weekday"]).over(windowSpec)
+        ).drop(
+            feature_col + "_weekday"
+        ).withColumnRenamed(
+            "n_", feature_col + "_weekday"
+        )
 
     for v in needed_dimension_variables:
         intermediate_table3 = intermediate_table3.withColumn(

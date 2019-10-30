@@ -2,14 +2,22 @@ from requests import post
 import datetime as dt
 import itertools as it
 
+import pandas as pd
+from pandas import DataFrame
+
 uri = "https://buildhub.moz.tools/api/search"
+
+
+def get_major(s):
+    "str -> int"
+    return int(s.split(".")[0])
 
 
 def pull_build_id_docs(
     min_build_day="20180701", channel="beta", raw_json=False
 ):
     """
-    Note, we're only taking win64, en-US, assuming that others will
+    Note, we're only taking win64, en-US, assuming that other build_ids will
     just be duplicates.
     """
     query = {
@@ -53,7 +61,7 @@ def extract_triplets(
     doc, major_version=None, keep_rc=False, keep_release=False, agg=min
 ):
     """
-    @major_version: int
+    @major_version: int or (callable: str -> bool)
     [doc] = aggregations.buildid.buckets ->
         doc.version.buckets[].key
     From json results, return tuple of `buildids`, `pub_dates`, `versions`
@@ -68,7 +76,10 @@ def extract_triplets(
     def major_version_filt(v):
         if major_version is None:
             return True
-        return int(v.split(".")[0]) == major_version
+        elif isinstance(major_version, int):
+            return get_major(v) == major_version
+        else:
+            return major_version(v)
 
     buildids = collect_results("buildid")
     pub_dates = collect_results("pub_date")
@@ -124,6 +135,34 @@ def version2build_id_str(
         )
         for dvers, trips in triplet_dct.items()
     }
+
+
+def version2df(docs, major_version=None, keep_rc=False, keep_release=False):
+    """
+    Given docs from ---
+    return DataFrame with columns `disp_vers`, `build_id`, `pub_date`.
+    """
+    triples = version2build_ids(
+        docs,
+        major_version=major_version,
+        keep_rc=keep_rc,
+        keep_release=keep_release,
+    )
+    df = (
+        DataFrame(
+            [trip for trips in triples.values() for trip in trips],
+            columns=["disp_vers", "build_id", "pub_date"],
+        )
+        .assign(
+            pub_date=lambda x: (x.pub_date // 1e3)
+            .map(dt.datetime.utcfromtimestamp)
+            .pipe(pd.to_datetime)
+        )
+        .sort_values(["pub_date"], ascending=True)
+        .reset_index(drop=1)
+    )
+
+    return df
 
 
 def version_filter(x, keep_rc=False, keep_release=False):

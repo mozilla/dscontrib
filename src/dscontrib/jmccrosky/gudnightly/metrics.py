@@ -172,6 +172,83 @@ def metricActiveHoursPerWeekPerProfileDay(
     return active_hours_table
 
 
+def metricSumDimensionOverWeekPerProfileDay(
+    data, needed_dimension_variables, feature_col, sampling_multiplier, days=7,
+    include_day_of_week=False
+):
+    all_user_days = data.select("id").distinct().crossJoin(
+        data.select("date").distinct()
+    )
+    intermediate_table1 = data.filter(
+        col(feature_col) > 0
+    ).select(
+        ["id", "date", feature_col]
+    ).distinct(
+    )
+
+    intermediate_table1 = intermediate_table1.alias("intermediate_table")
+    all_user_days = all_user_days.alias("all_user_days")
+
+    # Augment activity table to include non-active days
+    intermediate_table2 = intermediate_table1.join(
+        all_user_days,
+        ['id', 'date'],
+        'outer'
+    ).withColumn(
+        "n_", F.coalesce("intermediate_table." + feature_col, lit(0))
+    ).drop(
+        feature_col
+    ).withColumnRenamed(
+        "n_", feature_col
+    )
+
+    if include_day_of_week:
+        intermediate_table2 = intermediate_table2.withColumn(
+            "weekday_" + feature_col,
+            F.when(
+                F.date_format('date', 'u').cast(IntegerType()) <= 5,
+                col(feature_col)
+            ).otherwise(0)
+        ).withColumn(
+            "weekend_" + feature_col,
+            F.when(
+                F.date_format('date', 'u').cast(IntegerType()) >= 6,
+                col(feature_col)
+            ).otherwise(0)
+        )
+
+    # Calculate active hours for each profile-day
+    windowSpec = Window.partitionBy(
+        [intermediate_table2.id]
+    ).orderBy(
+        intermediate_table2.date
+    ).rowsBetween(
+        1 - days, 0
+    )
+
+    active_hours_table = intermediate_table2.withColumn(
+        "_temp", F.sum(intermediate_table2[feature_col]).over(windowSpec)
+    )
+    if include_day_of_week:
+        active_hours_table = active_hours_table.withColumn(
+            "_temp_weekday",
+            F.sum(intermediate_table2["weekday_" + feature_col]).over(windowSpec)
+        ).withColumn(
+            "_temp_weekend",
+            F.sum(intermediate_table2["weekend_" + feature_col]).over(windowSpec)
+        )
+    return active_hours_table.withColumnRenamed(
+        "_temp",
+        feature_col
+    ).withColumnRenamed(
+        "_temp_weekday",
+        "weekday_" + feature_col
+    ).withColumnRenamed(
+        "_temp_weekend",
+        "weekend_" + feature_col
+    )
+
+
 def metricDaysPerWeekPerProfileDay(
     data, needed_dimension_variables, feature_col, sampling_multiplier, days=7,
     include_day_of_week=False

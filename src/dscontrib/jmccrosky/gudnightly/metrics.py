@@ -237,7 +237,11 @@ def metricSumDimensionOverWeekPerProfileDay(
             "_temp_weekend",
             F.sum(intermediate_table2["weekend_" + feature_col]).over(windowSpec)
         )
-    return active_hours_table.withColumnRenamed(
+    return active_hours_table.drop(
+        feature_col,
+        "weekday_" + feature_col,
+        "weekend_" + feature_col,
+    ).withColumnRenamed(
         "_temp",
         feature_col
     ).withColumnRenamed(

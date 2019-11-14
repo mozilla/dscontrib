@@ -28,6 +28,8 @@ _FIRST_MODEL_DATES = {
       'Focus Android': pd.to_datetime("2019-03-08").date(),
       'nondesktop_nofire_global': pd.to_datetime("2019-03-08").date(),
       'nondesktop_nofire_tier1': pd.to_datetime("2019-03-08").date(),
+      'nondesktop_nofire_global_2020': pd.to_datetime("2019-11-10").date(),
+      'nondesktop_nofire_tier1_2020': pd.to_datetime("2019-11-10").date(),
 }
 _FORECAST_HORIZON = pd.to_datetime("2020-12-31").date()
 _BQ_PROJECT = "moz-fx-data-derived-datasets"

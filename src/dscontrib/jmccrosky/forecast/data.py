@@ -130,6 +130,12 @@ def getNondesktopNoFireData(bqClient):
     )
     for k in data:
         data[k]['ds'] = pd.to_datetime(data[k]['ds']).dt.date
+    data['nondesktop_nofire_global_2020'] = data[
+        'nondesktop_nofire_global'
+    ].copy(deep=True)
+    data['nondesktop_nofire_tier1_2020'] = data[
+        'nondesktop_nofire_tier1'
+    ].copy(deep=True)
     return data
 
 

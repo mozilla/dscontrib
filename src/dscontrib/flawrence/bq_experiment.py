@@ -28,7 +28,7 @@ def date_sub(date_string_l, date_string_r):
 
 
 def sanitize_table_name_for_bq(table_name):
-    return re.sub(r'![a-zA-Z_0-9]', table_name, '_')
+    return re.sub(r'[^a-zA-Z_0-9]', '_', table_name)
 
 
 class BigqueryStuff(object):
@@ -70,8 +70,9 @@ class Experiment(object):
                     ).table(full_res_table_name)
                 )
             ).result()
+            print('Saved into', full_res_table_name)
         except Conflict:
-            print("Full results table already exists. Reusing that.")
+            print("Full results table already exists. Reusing", full_res_table_name)
             full_res = bq_stuff.client.query(
                 "SELECT * FROM `{project_id}.{dataset_id}.{full_table_name}`".format(
                     project_id=bq_stuff.project_id,
@@ -82,7 +83,7 @@ class Experiment(object):
 
         ts_res = {
             aw.start: bq_stuff.client.query("""
-                SELECT * EXCEPT (client_id)
+                SELECT * EXCEPT (client_id, analysis_window_start, analysis_window_end)
                 FROM `{project_id}.{dataset_id}.{full_table_name}`
                 WHERE analysis_window_start = {aws}
                 AND analysis_window_end = {awe}
@@ -101,7 +102,7 @@ class Experiment(object):
             metric_list, time_limits
         )
 
-        query = """
+        return """
     WITH analysis_windows AS (
         {analysis_windows}
     ),
@@ -119,22 +120,22 @@ class Experiment(object):
     FROM enrollments
     LEFT JOIN {metrics_queries}
         """.format(
-            analysis_windows=self._build_analysis_window(time_limits.analysis_windows),
+            analysis_windows=self._build_analysis_windows(time_limits.analysis_windows),
             enrollments_query=self._build_enrollments(time_limits, study_type),
             metrics_columns=',\n        '.join(metrics_columns),
             metrics_queries='\n    LEFT JOIN '.join(metrics_queries)
         )
 
-        return query
-
     @staticmethod
-    def _build_analysis_window(analysis_windows):
+    def _build_analysis_windows(analysis_windows):
         return "\n        UNION ALL\n        ".join(
             "(SELECT {aws} AS analysis_window_start, {awe} AS analysis_window_end)"
             .format(
                 aws=aw.start,
                 awe=aw.end,
-            ) for aw in analysis_windows)
+            )
+            for aw in analysis_windows
+        )
 
     def _build_enrollments(self, time_limits, study_type):
         # TODO: allow custom tables to be referenced
@@ -185,7 +186,7 @@ class Experiment(object):
         {query}
         ) ds_{i} USING (client_id, analysis_window_start, analysis_window_end)
                 """.format(
-                    query=ds.get_query(bla[ds], time_limits),
+                    query=ds.get_query(bla[ds], time_limits, self.experiment_slug),
                     i=i
                 )
             )
@@ -211,10 +212,26 @@ class Experiment(object):
 class DataSource(object):
     name = attr.ib(validator=attr.validators.instance_of(str))
     from_expr = attr.ib(validator=attr.validators.instance_of(str))
-    client_id_column = attr.ib(default='client_id', type='string')
-    submission_date_column = attr.ib(default='submission_date', type='string')
+    client_id_column = attr.ib(default='client_id', type=str)
+    submission_date_column = attr.ib(default='submission_date', type=str)
+    experiment_column = attr.ib(default=True)
 
-    def get_query(self, metric_list, time_limits):
+    def get_query(self, metric_list, time_limits, experiment_slug):
+        if self.experiment_column is True:
+            ignore_pre_enroll_first_day = """AND (
+                ds.{submission_date} != e.enrollment_date
+                    OR `moz-fx-data-shared-prod.udf.get_key`(
+                        ds.experiments, '{experiment_slug}'
+                    ) IS NOT NULL
+                )""".format(
+                    submission_date=self.submission_date_column,
+                    experiment_slug=experiment_slug,
+                )
+        elif self.experiment_column is False:
+            ignore_pre_enroll_first_day = ''
+        else:
+            ignore_pre_enroll_first_day = self.experiment_column
+
         return """SELECT
             e.client_id,
             e.analysis_window_start,
@@ -227,6 +244,7 @@ class DataSource(object):
                 AND ds.{submission_date} BETWEEN
                     DATE_ADD(e.enrollment_date, interval e.analysis_window_start day)
                     AND DATE_ADD(e.enrollment_date, interval e.analysis_window_end day)
+                {ignore_pre_enroll_first_day}
         GROUP BY e.client_id, e.analysis_window_start, e.analysis_window_end""".format(
             client_id=self.client_id_column,
             submission_date=self.submission_date_column,
@@ -236,7 +254,8 @@ class DataSource(object):
             metrics=',\n            '.join(
                 "{se} AS {n}".format(se=m.select_expr, n=m.name)
                 for m in metric_list
-            )
+            ),
+            ignore_pre_enroll_first_day=ignore_pre_enroll_first_day
         )
 
     def get_sanity_metrics(self):
@@ -258,6 +277,7 @@ clients_daily = DataSource(
 search_clients_daily = DataSource(
     name='search_clients_daily',
     from_expr='`moz-fx-data-shared-prod.search.search_clients_daily`',
+    experiment_column=False,
 )
 
 

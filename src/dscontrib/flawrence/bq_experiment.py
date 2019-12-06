@@ -28,7 +28,13 @@ def date_sub(date_string_l, date_string_r):
 
 
 def sanitize_table_name_for_bq(table_name):
-    return re.sub(r'[^a-zA-Z_0-9]', '_', table_name)
+    of_good_character_but_possibly_verbose = re.sub(r'[^a-zA-Z_0-9]', '_', table_name)
+
+    if len(of_good_character_but_possibly_verbose) <= 1024:
+        return of_good_character_but_possibly_verbose
+
+    return of_good_character_but_possibly_verbose[:500] + '___' \
+        + of_good_character_but_possibly_verbose[-500:]
 
 
 class BigqueryStuff(object):
@@ -36,6 +42,38 @@ class BigqueryStuff(object):
         self.dataset_id = dataset_id
         self.project_id = project_id
         self.client = bigquery.Client(project=project_id)
+
+
+def run_query(bq_stuff, sql, results_table=None):
+    """Run a query and return the result.
+
+    If ``results_table`` is provided, then save the results
+    into there (or just query from there if it already exists).
+    """
+    if not results_table:
+        return bq_stuff.client.query(sql).result
+
+    try:
+        full_res = bq_stuff.client.query(
+            sql,
+            job_config=bigquery.QueryJobConfig(
+                destination=bq_stuff.client.dataset(
+                    bq_stuff.dataset_id
+                ).table(results_table)
+            )
+        ).result()
+        print('Saved into', results_table)
+        return full_res
+
+    except Conflict:
+        print("Full results table already exists. Reusing", results_table)
+        return bq_stuff.client.query(
+            "SELECT * FROM `{project_id}.{dataset_id}.{full_table_name}`".format(
+                project_id=bq_stuff.project_id,
+                dataset_id=bq_stuff.dataset_id,
+                full_table_name=results_table,
+            )
+        ).result()
 
 
 @attr.s(frozen=True, slots=True)
@@ -48,63 +86,92 @@ class Experiment(object):
 
     def get_time_series_data(
         self, bq_stuff, metric_list, last_date_full_data,
-        time_series_period='weekly', study_type='normandy'
+        time_series_period='weekly', enrollments_query_type='normandy',
+        custom_enrollments_query=None
     ):
         time_limits = TimeLimits.for_ts(
             self.start_date, last_date_full_data, time_series_period,
             self.num_dates_enrollment
         )
 
-        full_sql = self._build_query(metric_list, time_limits, study_type)
+        full_sql = self._build_query(
+            metric_list, time_limits, enrollments_query_type, custom_enrollments_query
+        )
 
         full_res_table_name = sanitize_table_name_for_bq('_'.join(
             [last_date_full_data, self.experiment_slug, str(hash(full_sql))]
         ))
 
-        try:
-            full_res = bq_stuff.client.query(
-                full_sql,
-                job_config=bigquery.QueryJobConfig(
-                    destination=bq_stuff.client.dataset(
-                        bq_stuff.dataset_id
-                    ).table(full_res_table_name)
-                )
-            ).result()
-            print('Saved into', full_res_table_name)
-        except Conflict:
-            print("Full results table already exists. Reusing", full_res_table_name)
-            full_res = bq_stuff.client.query(
-                "SELECT * FROM `{project_id}.{dataset_id}.{full_table_name}`".format(
-                    project_id=bq_stuff.project_id,
-                    dataset_id=bq_stuff.dataset_id,
-                    full_table_name=full_res_table_name,
-                )
-            ).result()
+        full_res = run_query(bq_stuff, full_sql, full_res_table_name)
 
         ts_res = {
-            aw.start: bq_stuff.client.query("""
-                SELECT * EXCEPT (client_id, analysis_window_start, analysis_window_end)
-                FROM `{project_id}.{dataset_id}.{full_table_name}`
-                WHERE analysis_window_start = {aws}
-                AND analysis_window_end = {awe}
-            """.format(
-                project_id=bq_stuff.project_id,
-                dataset_id=bq_stuff.dataset_id,
-                full_table_name=full_res_table_name,
-                aws=aw.start,
-                awe=aw.end,
-            )).result() for aw in time_limits.analysis_windows}
+
+            aw.start: run_query(
+                bq_stuff,
+                self._build_analysis_window_subset_query(
+                    bq_stuff, aw, full_res_table_name
+                ),
+            )
+
+            for aw in time_limits.analysis_windows
+        }
 
         return ts_res, full_res
 
-    def _build_query(self, metric_list, time_limits, study_type):
-        metrics_columns, metrics_queries = self._build_metrics_bits(
+    def get_per_client_data(
+        self, bq_stuff, metric_list, last_date_full_data,
+        analysis_start_days, analysis_length_days, enrollments_query_type='normandy',
+        custom_enrollments_query=None
+    ):
+        time_limits = TimeLimits.for_single_analysis_window(
+            self.start_date, last_date_full_data, analysis_start_days,
+            analysis_length_days, self.num_dates_enrollment
+        )
+
+        full_sql = self._build_query(
+            metric_list, time_limits, enrollments_query_type, custom_enrollments_query
+        )
+
+        full_res_table_name = sanitize_table_name_for_bq('_'.join(
+            [last_date_full_data, self.experiment_slug, str(hash(full_sql))]
+        ))
+
+        return run_query(bq_stuff, full_sql, full_res_table_name)
+
+    def _build_analysis_window_subset_query(
+        bq_stuff, analysis_window, full_res_table_name
+    ):
+        return """
+            SELECT * EXCEPT (client_id, analysis_window_start, analysis_window_end)
+            FROM `{project_id}.{dataset_id}.{full_table_name}`
+            WHERE analysis_window_start = {aws}
+            AND analysis_window_end = {awe}
+        """.format(
+            project_id=bq_stuff.project_id,
+            dataset_id=bq_stuff.dataset_id,
+            full_table_name=full_res_table_name,
+            aws=analysis_window.start,
+            awe=analysis_window.end,
+        )
+
+    def _build_query(
+        self, metric_list, time_limits, enrollments_query_type,
+        custom_enrollments_query=None,
+    ):
+        analysis_windows_query = self._build_analysis_windows_query(
+            time_limits.analysis_windows
+        )
+
+        enrollments_query = custom_enrollments_query or \
+            self._build_enrollments_query(time_limits, enrollments_query_type)
+
+        metrics_columns, metrics_queries = self._build_metrics_query_bits(
             metric_list, time_limits
         )
 
         return """
     WITH analysis_windows AS (
-        {analysis_windows}
+        {analysis_windows_query}
     ),
     raw_enrollments AS ({enrollments_query}),
     enrollments AS (
@@ -120,14 +187,14 @@ class Experiment(object):
     FROM enrollments
     LEFT JOIN {metrics_queries}
         """.format(
-            analysis_windows=self._build_analysis_windows(time_limits.analysis_windows),
-            enrollments_query=self._build_enrollments(time_limits, study_type),
+            analysis_windows_query=analysis_windows_query,
+            enrollments_query=enrollments_query,
             metrics_columns=',\n        '.join(metrics_columns),
-            metrics_queries='\n    LEFT JOIN '.join(metrics_queries)
+            metrics_queries='\n'.join(metrics_queries)
         )
 
     @staticmethod
-    def _build_analysis_windows(analysis_windows):
+    def _build_analysis_windows_query(analysis_windows):
         return "\n        UNION ALL\n        ".join(
             "(SELECT {aws} AS analysis_window_start, {awe} AS analysis_window_end)"
             .format(
@@ -137,39 +204,38 @@ class Experiment(object):
             for aw in analysis_windows
         )
 
-    def _build_enrollments(self, time_limits, study_type):
-        # TODO: allow custom tables to be referenced
-        if study_type == 'normandy':
-            return self._build_enrollments_normandy(time_limits)
-        elif study_type == 'addon':
+    def _build_enrollments_query(self, time_limits, enrollments_query_type):
+        if enrollments_query_type == 'normandy':
+            return self._build_enrollments_query_normandy(time_limits)
+        elif enrollments_query_type == 'glean':
             raise NotImplementedError
         else:
             raise ValueError
 
-    def _build_enrollments_normandy(self, time_limits):
+    def _build_enrollments_query_normandy(self, time_limits):
         return """
-                SELECT
-                    e.client_id,
-                    `moz-fx-data-shared-prod.udf.get_key`(e.event_map_values, 'branch')
-                        AS branch,
-                    min(e.submission_date) AS enrollment_date,
-                    count(e.submission_date) AS num_enrollment_events
-                FROM
-                    `moz-fx-data-shared-prod.telemetry.events` e
-                WHERE
-                    e.event_category = 'normandy'
-                    AND e.event_method = 'enroll'
-                    AND e.submission_date
-                        BETWEEN '{first_enrollment_date}' AND '{last_enrollment_date}'
-                    AND e.event_string_value = '{experiment_slug}'
-                GROUP BY e.client_id, branch
+        SELECT
+            e.client_id,
+            `moz-fx-data-shared-prod.udf.get_key`(e.event_map_values, 'branch')
+                AS branch,
+            min(e.submission_date) AS enrollment_date,
+            count(e.submission_date) AS num_enrollment_events
+        FROM
+            `moz-fx-data-shared-prod.telemetry.events` e
+        WHERE
+            e.event_category = 'normandy'
+            AND e.event_method = 'enroll'
+            AND e.submission_date
+                BETWEEN '{first_enrollment_date}' AND '{last_enrollment_date}'
+            AND e.event_string_value = '{experiment_slug}'
+        GROUP BY e.client_id, branch
             """.format(
             experiment_slug=self.experiment_slug,
             first_enrollment_date=time_limits.first_enrollment_date,
             last_enrollment_date=time_limits.last_enrollment_date,
         )
 
-    def _build_metrics_bits(self, metric_list, time_limits):
+    def _build_metrics_query_bits(self, metric_list, time_limits):
         bla = self._partition_metrics_by_data_source(metric_list)
 
         metrics_columns = []
@@ -177,16 +243,16 @@ class Experiment(object):
 
         for i, ds in enumerate(bla.keys()):
             for m in bla[ds]:
-                metrics_columns.append("ds_{i}.{metric_name} AS {metric_name}".format(
+                metrics_columns.append("ds_{i}.{metric_name}".format(
                     i=i, metric_name=m.name
                 ))
 
             metrics_queries.append(
-                """(
+                """    LEFT JOIN (
         {query}
         ) ds_{i} USING (client_id, analysis_window_start, analysis_window_end)
                 """.format(
-                    query=ds.get_query(bla[ds], time_limits, self.experiment_slug),
+                    query=ds.build_query(bla[ds], time_limits, self.experiment_slug),
                     i=i
                 )
             )
@@ -212,26 +278,30 @@ class Experiment(object):
 class DataSource(object):
     name = attr.ib(validator=attr.validators.instance_of(str))
     from_expr = attr.ib(validator=attr.validators.instance_of(str))
+    experiments_column_type = attr.ib(default='desktop_main_ping', type=str)
     client_id_column = attr.ib(default='client_id', type=str)
     submission_date_column = attr.ib(default='submission_date', type=str)
-    experiment_column = attr.ib(default=True)
 
-    def get_query(self, metric_list, time_limits, experiment_slug):
-        if self.experiment_column is True:
-            ignore_pre_enroll_first_day = """AND (
-                ds.{submission_date} != e.enrollment_date
+    @property
+    def experiments_column_expr(self):
+        if self.experiments_column_type is None:
+            return ''
+
+        elif self.experiments_column_type == 'desktop_main_ping':
+            return """AND (
+                    ds.{submission_date} != e.enrollment_date
                     OR `moz-fx-data-shared-prod.udf.get_key`(
                         ds.experiments, '{experiment_slug}'
                     ) IS NOT NULL
-                )""".format(
-                    submission_date=self.submission_date_column,
-                    experiment_slug=experiment_slug,
-                )
-        elif self.experiment_column is False:
-            ignore_pre_enroll_first_day = ''
-        else:
-            ignore_pre_enroll_first_day = self.experiment_column
+                )"""
 
+        elif self.experiments_column_type == 'glean':
+            raise NotImplementedError
+
+        else:
+            raise ValueError
+
+    def build_query(self, metric_list, time_limits, experiment_slug):
         return """SELECT
             e.client_id,
             e.analysis_window_start,
@@ -255,11 +325,40 @@ class DataSource(object):
                 "{se} AS {n}".format(se=m.select_expr, n=m.name)
                 for m in metric_list
             ),
-            ignore_pre_enroll_first_day=ignore_pre_enroll_first_day
+            ignore_pre_enroll_first_day=self.experiments_column_expr.format(
+                submission_date=self.submission_date_column,
+                experiment_slug=experiment_slug,
+            )
         )
 
     def get_sanity_metrics(self):
-        return []  # TODO: stub
+        if self.experiments_column_type is None:
+            return []
+
+        elif self.experiments_column_type == 'desktop_main_ping':
+            return [
+                Metric(
+                    name=self.name + '_has_contradictory_branch',
+                    data_source=self,
+                    select_expr=agg_any("""`moz-fx-data-shared-prod.udf.get_key`(
+                ds.experiments, '{experiment_slug}'
+            ) != enrollments.branch"""),
+                ),
+                Metric(
+                    name=self.name + '_has_non_enrolled_data',
+                    data_source=self,
+                    select_expr=agg_any("""ds.experiments IS NOT NULL
+                AND `moz-fx-data-shared-prod.udf.get_key`(
+                ds.experiments, '{experiment_slug}'
+            ) = ''""")
+                ),
+            ]
+
+        elif self.experiments_column_type == 'glean':
+            raise NotImplementedError
+
+        else:
+            raise ValueError
 
 
 @attr.s(frozen=True, slots=True)
@@ -277,12 +376,16 @@ clients_daily = DataSource(
 search_clients_daily = DataSource(
     name='search_clients_daily',
     from_expr='`moz-fx-data-shared-prod.search.search_clients_daily`',
-    experiment_column=False,
+    experiments_column_type=None,
 )
 
 
 def agg_sum(select_expr):
     return "COALESCE(SUM({}), 0)".format(select_expr)
+
+
+def agg_any(select_expr):
+    return "COALESCE(MAX({}) AS INT, 0)".format(select_expr)
 
 
 active_hours = Metric(

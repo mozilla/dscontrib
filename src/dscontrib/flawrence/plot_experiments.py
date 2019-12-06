@@ -153,8 +153,8 @@ def plot_uplifts_scatter(ax, branch_x_stats):
 
     xmin, xmax = ax.get_xlim()
     ax.plot(
-        [0, xmin - 1, xmax + 1],
-        [0, 0, 0],
+        [xmin - 1, xmax + 1],
+        [0, 0],
         'k--', label='zero'
     )
 

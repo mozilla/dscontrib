@@ -51,7 +51,7 @@ def run_query(bq_stuff, sql, results_table=None):
     into there (or just query from there if it already exists).
     """
     if not results_table:
-        return bq_stuff.client.query(sql).result
+        return bq_stuff.client.query(sql).result()
 
     try:
         full_res = bq_stuff.client.query(
@@ -118,7 +118,7 @@ class Experiment(object):
 
         return ts_res, full_res
 
-    def get_per_client_data(
+    def get_single_window_data(
         self, bq_stuff, metric_list, last_date_full_data,
         analysis_start_days, analysis_length_days, enrollments_query_type='normandy',
         custom_enrollments_query=None
@@ -138,6 +138,7 @@ class Experiment(object):
 
         return run_query(bq_stuff, full_sql, full_res_table_name)
 
+    @staticmethod
     def _build_analysis_window_subset_query(
         bq_stuff, analysis_window, full_res_table_name
     ):
@@ -185,7 +186,7 @@ class Experiment(object):
         enrollments.*,
         {metrics_columns}
     FROM enrollments
-    LEFT JOIN {metrics_queries}
+    {metrics_queries}
         """.format(
             analysis_windows_query=analysis_windows_query,
             enrollments_query=enrollments_query,
@@ -259,15 +260,14 @@ class Experiment(object):
 
         return metrics_columns, metrics_queries
 
-    @staticmethod
-    def _partition_metrics_by_data_source(metric_list):
+    def _partition_metrics_by_data_source(self, metric_list):
         res = {}
 
         for m in reversed(metric_list):
             ds = m.data_source
 
             if ds not in res:
-                res[ds] = m.data_source.get_sanity_metrics()
+                res[ds] = m.data_source.get_sanity_metrics(self.experiment_slug)
 
             res[ds].insert(0, m)
 
@@ -331,7 +331,7 @@ class DataSource(object):
             )
         )
 
-    def get_sanity_metrics(self):
+    def get_sanity_metrics(self, experiment_slug):
         if self.experiments_column_type is None:
             return []
 
@@ -342,15 +342,14 @@ class DataSource(object):
                     data_source=self,
                     select_expr=agg_any("""`moz-fx-data-shared-prod.udf.get_key`(
                 ds.experiments, '{experiment_slug}'
-            ) != enrollments.branch"""),
+            ) != e.branch""".format(experiment_slug=experiment_slug)),
                 ),
                 Metric(
                     name=self.name + '_has_non_enrolled_data',
                     data_source=self,
-                    select_expr=agg_any("""ds.experiments IS NOT NULL
-                AND `moz-fx-data-shared-prod.udf.get_key`(
+                    select_expr=agg_any("""`moz-fx-data-shared-prod.udf.get_key`(
                 ds.experiments, '{experiment_slug}'
-            ) = ''""")
+            ) IS NULL""".format(experiment_slug=experiment_slug))
                 ),
             ]
 
@@ -385,7 +384,7 @@ def agg_sum(select_expr):
 
 
 def agg_any(select_expr):
-    return "COALESCE(MAX({}) AS INT, 0)".format(select_expr)
+    return "COALESCE(CAST(MAX({}) AS INT64), 0)".format(select_expr)
 
 
 active_hours = Metric(

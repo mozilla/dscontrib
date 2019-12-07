@@ -78,17 +78,244 @@ def run_query(bq_stuff, sql, results_table=None):
 
 @attr.s(frozen=True, slots=True)
 class Experiment(object):
+    """Query experiment data; store experiment metadata.
+
+    The methods here query data in a way compatible with the following
+    principles, which are important for experiment analysis:
+
+    * The population of clients in each branch must have the same
+      properties, aside from the intervention itself and its
+      consequences; i.e. there must be no underlying bias in the
+      branch populations.
+    * We must measure the same thing for each client, to minimize the
+      variance associated with our measurement.
+
+    So that our analyses follow these abstract principles, we follow
+    these rules:
+
+    * Start with a list of all clients who enrolled.
+    * We can filter this list of clients only based on information known
+      to us at or before the time that they enrolled, because later
+      information might be causally connected to the intervention.
+    * For any given metric, every client gets a non-null value; we don't
+      implicitly ignore anyone, even if they churned and stopped
+      sending data.
+    * Typically if an enrolled client no longer qualifies for enrollment,
+      we'll still want to include their data in the analysis, unless
+      we're explicitly using stats methods that handle censored data.
+    * We define a "analysis window" with respect to clients'
+      enrollment dates. Each metric only uses data collected inside
+      this analysis window. We can only analyze data for a client
+      if we have data covering their entire analysis window.
+
+
+    Example usage (in a colab notebook)::
+
+        from google.colab import auth
+        auth.authenticate_user()
+        print('Authenticated')
+
+        project_id = 'moz-fx-data-bq-data-science'
+        dataset_id = 'your-dataset-name'
+
+        from mozanalysis.experiment import Experiment, BigqueryStuff
+        from mozanalysis.metrics.desktop import active_hours, uri_count
+
+        bq_stuff = BigqueryStuff(dataset_id, project_id)
+
+        experiment = Experiment(
+            experiment_slug='pref-fingerprinting-protections-retention-study-release-70',
+            start_date='2019-10-29',
+            num_dates_enrollment=8
+        )
+
+        # Run the query and store the results into a table
+        res = experiment.get_single_window_data(
+            enrollments,
+            [
+                active_hours,
+                uri_count
+            ],
+            last_date_full_data='2019-12-01',
+            analysis_start_days=0,
+            analysis_length_days=7
+        )
+
+        # Pull data into a pandas df, ready for running stats
+        pres = res.to_dataframe()
+
+    Args:
+        experiment_slug (str): Name of the study, used to identify
+            the enrollment events specific to this study.
+        start_date (str): e.g. '20190101'. First date on which enrollment
+            events were received.
+        num_dates_enrollment (int, optional): Only include this many dates
+            of enrollments. If ``None`` then use the maximum number of dates
+            as determined by the metric's analysis window and
+            ``last_date_full_data``. Typically ``7n+1``, e.g. ``8``. The
+            factor '7' removes weekly seasonality, and the ``+1`` accounts
+            for the fact that enrollment typically starts a few hours
+            before UTC midnight.
+
+    Attributes:
+        experiment_slug (str): Name of the study, used to identify
+            the enrollment events specific to this study.
+        start_date (str): e.g. '20190101'. First date on which enrollment
+            events were received.
+        num_dates_enrollment (int, optional): Only include this many days
+            of enrollments. If ``None`` then use the maximum number of days
+            as determined by the metric's analysis window and
+            ``last_date_full_data``. Typically ``7n+1``, e.g. ``8``. The
+            factor '7' removes weekly seasonality, and the ``+1`` accounts
+            for the fact that enrollment typically starts a few hours
+            before UTC midnight.
+    """
 
     experiment_slug = attr.ib()
     start_date = attr.ib()
     num_dates_enrollment = attr.ib(default=None)
-    addon_version = attr.ib(default=None)
+
+    def get_single_window_data(
+        self, bq_stuff, metric_list, last_date_full_data,
+        analysis_start_days, analysis_length_days, enrollments_query_type='normandy',
+        custom_enrollments_query=None
+    ):
+        """Query per-client metric values.
+
+        It will return the results, but it will also store them in a
+        permanent table in BigQuery. The name of this table will be
+        printed. Subsequent calls to this function will simply read
+        the results from this table.
+
+        Args:
+            bq_stuff (BigqueryStuff): BigQuery configuration and client.
+            metric_list (list of mozanalysis.metric.Metric): The metrics
+                to analyze.
+            last_date_full_data (str): The most recent date for which we
+                have complete data, e.g. '20190322'. If you want to ignore
+                all data collected after a certain date (e.g. when the
+                experiment recipe was deactivated), then do that here.
+            analysis_start_days (int): the start of the analysis window,
+                measured in 'days since the client enrolled'. We ignore data
+                collected outside this analysis window.
+            analysis_length_days (int): the length of the analysis window,
+                measured in days.
+            enrollments_query_type (str): Specifies the query to use to
+                get the experiment's enrollments, unless overridden by
+                custom_enrollments_query.
+            custom_enrollments_query (str): A full SQL query to be used
+                in the main query::
+
+                    WITH raw_enrollments AS ({custom_enrollments_query})
+
+        Returns:
+            A ``google.cloud.bigquery.table.RowIterator`` for the query
+            results. What is that? I don't know either, but it is
+            what you get when you construct a BigQuery ``query()`` then
+            call ``.result()`` on it. You can call ``to_dataframe()``
+            on this object to get a Pandas DataFrame.
+
+            There is one row per ``client_id``. There are some metadata
+            columns, then one column per metric in ``metric_list``,
+            and one column per sanity-check metric.
+            Columns (not necessarily in order):
+
+                * client_id (str, optional): Not necessary for
+                  "happy path" analyses.
+                * branch (str): The client's branch
+                * other columns of ``enrollments``.
+                * [metric 1]: The client's value for the first metric in
+                  ``metric_list``.
+                * ...
+                * [metric n]: The client's value for the nth (final)
+                  metric in ``metric_list``.
+                * [sanity check 1]: The client's value for the first
+                  sanity check metric for the first data source that
+                  supports sanity checks.
+                * ...
+                * [sanity check n]: The client's value for the last
+                  sanity check metric for the last data source that
+                  supports sanity checks.
+
+            This format - the schema plus there being one row per
+            enrolled client, regardless of whether the client has data
+            in ``data_source`` - was agreed upon by the DS team, and is the
+            standard format for queried experimental data.
+        """
+        time_limits = TimeLimits.for_single_analysis_window(
+            self.start_date, last_date_full_data, analysis_start_days,
+            analysis_length_days, self.num_dates_enrollment
+        )
+
+        full_sql = self._build_query(
+            metric_list, time_limits, enrollments_query_type, custom_enrollments_query
+        )
+
+        full_res_table_name = sanitize_table_name_for_bq('_'.join(
+            [last_date_full_data, self.experiment_slug, str(hash(full_sql))]
+        ))
+
+        return run_query(bq_stuff, full_sql, full_res_table_name)
 
     def get_time_series_data(
         self, bq_stuff, metric_list, last_date_full_data,
         time_series_period='weekly', enrollments_query_type='normandy',
         custom_enrollments_query=None
     ):
+        """Query per-client metric values over a time series.
+
+        Roughly equivalent to looping over ``get_single_window_data``
+        with different analysis windows and reorganising the results.
+
+        Args:
+            bq_stuff (BigqueryStuff): BigQuery configuration and client.
+            metric_list (list of mozanalysis.metric.Metric):
+                The metrics to analyze.
+            last_date_full_data (str): The most recent date for which we
+                have complete data, e.g. '20190322'. If you want to ignore
+                all data collected after a certain date (e.g. when the
+                experiment recipe was deactivated), then do that here.
+            time_series_period ('daily' or 'weekly'): How long each
+                analysis window should be.
+            enrollments_query_type (str): Specifies the query to use to
+                get the experiment's enrollments, unless overridden by
+                custom_enrollments_query.
+            custom_enrollments_query (str): A full SQL query to be used
+                in the main query::
+
+                    WITH raw_enrollments AS ({custom_enrollments_query})
+
+        Returns:
+            A ``dict`` of data per analysis window. Each key is an ``int``:
+            the number of days between enrollment and the start of the
+            analysis window. Each value is a
+            ``google.cloud.bigquery.table.RowIterator`` of results in "the
+            standard format": one row per client, some metadata columns,
+            plus one column per metric and sanity-check metric.
+            Columns (not necessarily in order):
+
+                * client_id (str, optional): Not necessary for
+                  "happy path" analyses.
+                * branch (str): The client's branch
+                * other columns of ``enrollments``.
+                * [metric 1]: The client's value for the first metric in
+                  ``metric_list``.
+                * ...
+                * [metric n]: The client's value for the nth (final)
+                  metric in ``metric_list``.
+                * [sanity check 1]: The client's value for the first
+                  sanity check metric for the first data source that
+                  supports sanity checks.
+                * ...
+                * [sanity check n]: The client's value for the last
+                  sanity check metric for the last data source that
+                  supports sanity checks.
+
+            Also returns a ``google.cloud.bigquery.table.RowIterator``
+            for a table with _all_ results; one row per pair of client,
+            analysis window.
+        """
+
         time_limits = TimeLimits.for_ts(
             self.start_date, last_date_full_data, time_series_period,
             self.num_dates_enrollment
@@ -118,47 +345,14 @@ class Experiment(object):
 
         return ts_res, full_res
 
-    def get_single_window_data(
-        self, bq_stuff, metric_list, last_date_full_data,
-        analysis_start_days, analysis_length_days, enrollments_query_type='normandy',
-        custom_enrollments_query=None
-    ):
-        time_limits = TimeLimits.for_single_analysis_window(
-            self.start_date, last_date_full_data, analysis_start_days,
-            analysis_length_days, self.num_dates_enrollment
-        )
-
-        full_sql = self._build_query(
-            metric_list, time_limits, enrollments_query_type, custom_enrollments_query
-        )
-
-        full_res_table_name = sanitize_table_name_for_bq('_'.join(
-            [last_date_full_data, self.experiment_slug, str(hash(full_sql))]
-        ))
-
-        return run_query(bq_stuff, full_sql, full_res_table_name)
-
-    @staticmethod
-    def _build_analysis_window_subset_query(
-        bq_stuff, analysis_window, full_res_table_name
-    ):
-        return """
-            SELECT * EXCEPT (client_id, analysis_window_start, analysis_window_end)
-            FROM `{project_id}.{dataset_id}.{full_table_name}`
-            WHERE analysis_window_start = {aws}
-            AND analysis_window_end = {awe}
-        """.format(
-            project_id=bq_stuff.project_id,
-            dataset_id=bq_stuff.dataset_id,
-            full_table_name=full_res_table_name,
-            aws=analysis_window.start,
-            awe=analysis_window.end,
-        )
-
     def _build_query(
         self, metric_list, time_limits, enrollments_query_type,
         custom_enrollments_query=None,
     ):
+        """Return SQL to query metric data for users.
+
+        Building this query is the main goal of this module.
+        """
         analysis_windows_query = self._build_analysis_windows_query(
             time_limits.analysis_windows
         )
@@ -195,7 +389,40 @@ class Experiment(object):
         )
 
     @staticmethod
+    def _build_analysis_window_subset_query(
+        bq_stuff, analysis_window, full_res_table_name
+    ):
+        """Return SQL for partitioning time series results.
+
+        When we query data for a time series, we query it for all
+        points of the time series, and we store this in a table.
+
+        This method returns SQL to query this table to obtain results
+        in "the standard format" for a single analysis window.
+        """
+        return """
+            SELECT * EXCEPT (client_id, analysis_window_start, analysis_window_end)
+            FROM `{project_id}.{dataset_id}.{full_table_name}`
+            WHERE analysis_window_start = {aws}
+            AND analysis_window_end = {awe}
+        """.format(
+            project_id=bq_stuff.project_id,
+            dataset_id=bq_stuff.dataset_id,
+            full_table_name=full_res_table_name,
+            aws=analysis_window.start,
+            awe=analysis_window.end,
+        )
+
+    @staticmethod
     def _build_analysis_windows_query(analysis_windows):
+        """Return SQL to construct a table of analysis windows.
+
+        To query a time series, we construct a table of analysis windows
+        and cross join it with the enrollments table to get one row per
+        pair of client and analysis window.
+
+        This method writes the SQL to define the analysis window table.
+        """
         return "\n        UNION ALL\n        ".join(
             "(SELECT {aws} AS analysis_window_start, {awe} AS analysis_window_end)"
             .format(
@@ -206,6 +433,7 @@ class Experiment(object):
         )
 
     def _build_enrollments_query(self, time_limits, enrollments_query_type):
+        """Return SQL to query a list of enrollments and their branches"""
         if enrollments_query_type == 'normandy':
             return self._build_enrollments_query_normandy(time_limits)
         elif enrollments_query_type == 'glean':
@@ -214,6 +442,7 @@ class Experiment(object):
             raise ValueError
 
     def _build_enrollments_query_normandy(self, time_limits):
+        """Return SQL to query enrollments for a normandy experiment"""
         return """
         SELECT
             e.client_id,
@@ -237,41 +466,45 @@ class Experiment(object):
         )
 
     def _build_metrics_query_bits(self, metric_list, time_limits):
-        bla = self._partition_metrics_by_data_source(metric_list)
+        """Return lists of SQL fragments corresponding to metrics."""
+        ds_metrics = self._partition_metrics_by_data_source(metric_list)
 
         metrics_columns = []
         metrics_queries = []
 
-        for i, ds in enumerate(bla.keys()):
-            for m in bla[ds]:
-                metrics_columns.append("ds_{i}.{metric_name}".format(
-                    i=i, metric_name=m.name
-                ))
-
+        for i, ds in enumerate(ds_metrics.keys()):
+            query_for_metrics = ds.build_query(
+                ds_metrics[ds], time_limits, self.experiment_slug
+            )
             metrics_queries.append(
                 """    LEFT JOIN (
         {query}
         ) ds_{i} USING (client_id, analysis_window_start, analysis_window_end)
                 """.format(
-                    query=ds.build_query(bla[ds], time_limits, self.experiment_slug),
+                    query=query_for_metrics,
                     i=i
                 )
             )
 
+            for m in ds_metrics[ds]:
+                metrics_columns.append("ds_{i}.{metric_name}".format(
+                    i=i, metric_name=m.name
+                ))
+
         return metrics_columns, metrics_queries
 
     def _partition_metrics_by_data_source(self, metric_list):
-        res = {}
+        """Return a dict mapping data sources to metric lists.
 
-        for m in reversed(metric_list):
-            ds = m.data_source
+        Also add sanity metrics."""
+        data_sources = {m.data_source for m in metric_list}
 
-            if ds not in res:
-                res[ds] = m.data_source.get_sanity_metrics(self.experiment_slug)
-
-            res[ds].insert(0, m)
-
-        return res
+        return {
+            ds:
+                [m for m in metric_list if m.data_source == ds]
+                + ds.get_sanity_metrics(self.experiment_slug)
+            for ds in data_sources
+        }
 
 
 @attr.s(frozen=True, slots=True)

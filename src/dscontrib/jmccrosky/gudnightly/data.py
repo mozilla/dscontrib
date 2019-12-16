@@ -28,7 +28,9 @@ _MAP_NATURAL_DIMENSIONS = {
     "active_hours_sum": "active_hours_sum",
     "search_count_all": "search_count_all",
     "distribution_id": "distribution_id",
-    "scalar_parent_browser_engagement_total_uri_count_sum": "uri_count"
+    "scalar_parent_browser_engagement_total_uri_count_sum": "uri_count",
+    "scalar_parent_browser_engagement_unfiltered_uri_count_sum": "unfiltered_uri_count",
+    "scalar_parent_browser_engagement_unique_domains_count_sum": "unique_domain_count"
 }
 
 # Data file columns (TODO)

@@ -1,9 +1,11 @@
-from requests import post
 import datetime as dt
 import itertools as it
+import re
+from typing import Optional, Tuple, Union
 
-import pandas as pd
+import pandas as pd  # type: ignore
 from pandas import DataFrame
+from requests import post
 
 uri = "https://buildhub.moz.tools/api/search"
 
@@ -13,9 +15,7 @@ def get_major(s):
     return int(s.split(".")[0])
 
 
-def pull_build_id_docs(
-    min_build_day="20180701", channel="beta", raw_json=False
-):
+def pull_build_id_docs(min_build_day="20180701", channel="beta", raw_json=False):
     """
     Note, we're only taking win64, en-US, assuming that other build_ids will
     just be duplicates.
@@ -58,10 +58,14 @@ def pull_build_id_docs(
 
 
 def extract_triplets(
-    doc, major_version=None, keep_rc=False, keep_release=False, agg=min
+    doc,
+    major_version: Union[int, None, Tuple[int]] = None,
+    keep_rc=False,
+    keep_release=False,
+    agg=min,
 ):
     """
-    @major_version: int or (callable: str -> bool)
+    @major_version: int, Tuple[int] or (callable: str -> bool)
     [doc] = aggregations.buildid.buckets ->
         doc.version.buckets[].key
     From json results, return tuple of `buildids`, `pub_dates`, `versions`
@@ -78,6 +82,8 @@ def extract_triplets(
             return True
         elif isinstance(major_version, int):
             return get_major(v) == major_version
+        elif isinstance(major_version, tuple):
+            return get_major(v) in major_version
         else:
             return major_version(v)
 
@@ -95,44 +101,85 @@ def extract_triplets(
 
 
 def version2build_ids(
-    docs, major_version=None, keep_rc=False, keep_release=False
+    docs, major_version=None, keep_rc=False, keep_release=False, as_df=False
 ):
     version_build_ids = [
         extract_triplets(
-            doc,
-            major_version=major_version,
-            keep_rc=keep_rc,
-            keep_release=keep_release,
+            doc, major_version=major_version, keep_rc=keep_rc, keep_release=keep_release
         )
         for doc in docs
     ]
     version_build_ids = filter(None, version_build_ids)
-    return {
+    dct = {
         version: [
-            (_version, build_id, pub_date)
-            for _version, build_id, pub_date in triplets
+            (_version, build_id, pub_date) for _version, build_id, pub_date in triplets
         ]
         for version, triplets in it.groupby(version_build_ids, lambda x: x[0])
     }
+    if as_df:
+        return (
+            pd.DataFrame(
+                [
+                    trip
+                    for trips in version2build_ids(
+                        docs, keep_release=True, keep_rc=False
+                    ).values()
+                    for trip in trips
+                ],
+                columns=["dvers", "build_id", "pub_date"],
+            )
+            .assign(pub_date=lambda x: pd.to_datetime(x.pub_date, unit="ms"))
+            .sort_values(["pub_date"], ascending=False)
+            .reset_index(drop=1)
+        )
+    return dct
 
 
-def version2build_id_str(
-    docs, major_version=None, keep_rc=False, keep_release=False
-):
+def rc_major_version(disp_vers: str) -> Optional[int]:
+    rc_re = re.compile(r"(?P<major>\d\d+)(\.\d)+$")
+    m = rc_re.match(disp_vers)
+    return int(m.group("major")) if m else None
+
+
+def pull_beta_rc_builds(beta_major_versions, min_build_day="20180701"):
+    """
+    """
+
+    def combine_bid_rc(rc_major, build_id):
+        if rc_major == rc_major:
+            return f"{int(rc_major)}rc{build_id}"
+        return rc_major
+
+    docs = pull_build_id_docs(
+        min_build_day=min_build_day, channel="beta", raw_json=False
+    )
+    bhdf = (
+        version2build_ids(docs, keep_release=True, keep_rc=False, as_df=True)
+        .assign(rc_major=lambda x: x.dvers.map(rc_major_version))
+        .assign(is_rc=lambda x: x.rc_major.notnull())
+        .assign(
+            dvers2=lambda x: [
+                combine_bid_rc(rc, bid) for rc, bid in zip(x.rc_major, x.build_id)
+            ]
+        )
+        .assign(
+            dvers=lambda x: x[["dvers", "dvers2"]].fillna(axis=1, method="ffill").dvers2
+        )
+    )
+
+    return bhdf
+
+
+def version2build_id_str(docs, major_version=None, keep_rc=False, keep_release=False):
     """
     Returns mapping of display version to 'sql' list of build_ids.
     E.g., {'70.0b3': "'20190902191027', '20190902160204', '20190902120346'"}
     """
     triplet_dct = version2build_ids(
-        docs,
-        major_version=major_version,
-        keep_rc=keep_rc,
-        keep_release=keep_release,
+        docs, major_version=major_version, keep_rc=keep_rc, keep_release=keep_release
     )
     return {
-        dvers: ", ".join(
-            ["'{}'".format(bid) for _dvers, bid, pub_date in trips]
-        )
+        dvers: ", ".join(["'{}'".format(bid) for _dvers, bid, pub_date in trips])
         for dvers, trips in triplet_dct.items()
     }
 
@@ -143,10 +190,7 @@ def version2df(docs, major_version=None, keep_rc=False, keep_release=False):
     return DataFrame with columns `disp_vers`, `build_id`, `pub_date`.
     """
     triples = version2build_ids(
-        docs,
-        major_version=major_version,
-        keep_rc=keep_rc,
-        keep_release=keep_release,
+        docs, major_version=major_version, keep_rc=keep_rc, keep_release=keep_release
     )
     df = (
         DataFrame(
@@ -191,11 +235,20 @@ def months_ago(months=12):
     return (dt.date.today() - dt.timedelta(days=30 * months)).strftime("%Y%m%d")
 
 
+def pull_channel(channel, versions):
+    result_docs = pull_build_id_docs(min_build_day=months_ago(12), channel=channel)
+    return version2build_ids(
+        result_docs,
+        major_version=versions,
+        keep_rc=False,
+        keep_release=True,
+        as_df=True,
+    )
+
+
 def main(vers=67):
     # result_docs = pull_build_id_docs(min_build_day="20180701")
-    result_docs = pull_build_id_docs(
-        min_build_day=months_ago(12), channel="beta"
-    )
+    result_docs = pull_build_id_docs(min_build_day=months_ago(12), channel="beta")
     res = version2build_ids(
         result_docs, major_version=67, keep_rc=False, keep_release=False
     )
@@ -204,9 +257,7 @@ def main(vers=67):
 
 def main_release(vers=67):
     # result_docs = pull_build_id_docs(min_build_day="20180701")
-    result_docs = pull_build_id_docs(
-        min_build_day=months_ago(12), channel="release"
-    )
+    result_docs = pull_build_id_docs(min_build_day=months_ago(12), channel="release")
     res = version2build_ids(
         result_docs, major_version=67, keep_rc=False, keep_release=True
     )

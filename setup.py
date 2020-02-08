@@ -26,4 +26,13 @@ setup(
     ],
     setup_requires=["setuptools_scm"],
     use_scm_version={"git_describe_command": os.path.join(SETUP_PATH, "describe_revision.py")},
+    extras_require={
+        "luigi": [
+            "attrs",
+            "luigi",
+            "google-cloud-bigquery",
+            "google-cloud-storage",
+            "pytz",
+        ],
+    }
 )

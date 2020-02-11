@@ -21,7 +21,7 @@ def bootstrap(df, iterations, reporting_freq=10, strata=[],
     results['iteration'] = -1  # true sample stats lie at -1
     for i in range(iterations):
         if i % 10 == 0:
-            print i,
+            print(i, end=' ')
         s = df.sample(n, replace=True)
         sagg = munge(s)
         sagg['iteration'] = i

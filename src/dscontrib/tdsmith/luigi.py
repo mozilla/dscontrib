@@ -52,6 +52,7 @@ class SummarizePingsTable(TableFromStalableSql):
 class PingSummaryCsv(ExtractedCsvFromStalableTable):
     # This class keeps a local CSV file up to date with a BigQuery table.
     source_table = SummarizePings.destination_table
+    storage_url = "gs://bucket/filename.csv.gz"
     output_filename = "summary.csv.gz"
 
     def requires(self):

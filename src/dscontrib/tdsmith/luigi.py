@@ -4,6 +4,9 @@ Luigi!
 To get all the dependencies you need to use this, install dscontrib like:
     pip install dscontrib[luigi]
 
+You'll also need to set up application default credentials:
+https://docs.telemetry.mozilla.org/cookbooks/bigquery.html#from-client-sdks
+
 You may find yourself in the following scenario:
 * You have a bunch of .sql files, which may or may not depend on each other,
   that define some queries. You're probably interested in materializing some,

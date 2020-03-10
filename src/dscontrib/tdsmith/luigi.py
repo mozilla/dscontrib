@@ -66,7 +66,7 @@ class EnrollmentCsv(CsvFromStalableSql):
 
 # Finally, we can define a "parent" task that makes sure everything gets run.
 # It should depend on all of your CSVs.
-class MyWorkflow(luigi.task):
+class MyWorkflow(luigi.Task):
     def requires(self):
         return [
             PingSummaryCsv(),

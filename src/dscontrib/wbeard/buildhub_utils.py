@@ -1,7 +1,7 @@
 import datetime as dt
 import itertools as it
 import re
-from typing import Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import pandas as pd  # type: ignore
 from pandas import DataFrame
@@ -59,7 +59,7 @@ def pull_build_id_docs(min_build_day="20180701", channel="beta", raw_json=False)
 
 def extract_triplets(
     doc,
-    major_version: Union[int, None, Tuple[int]] = None,
+    major_version: Union[int, None, Tuple[int], List[int]] = None,
     keep_rc=False,
     keep_release=False,
     agg=min,
@@ -82,7 +82,7 @@ def extract_triplets(
             return True
         elif isinstance(major_version, int):
             return get_major(v) == major_version
-        elif isinstance(major_version, tuple):
+        elif isinstance(major_version, (tuple, list)):
             return get_major(v) in major_version
         else:
             return major_version(v)
@@ -235,15 +235,18 @@ def months_ago(months=12):
     return (dt.date.today() - dt.timedelta(days=30 * months)).strftime("%Y%m%d")
 
 
-def pull_channel(channel, versions):
-    result_docs = pull_build_id_docs(min_build_day=months_ago(12), channel=channel)
+def pull_channel(
+    channel, major_version: Union[int, None, Tuple[int], List[int]], min_build_day=None
+):
+    min_build_day = min_build_day or months_ago(12)
+    result_docs = pull_build_id_docs(min_build_day=min_build_day, channel=channel)
     return version2build_ids(
         result_docs,
-        major_version=versions,
+        major_version=major_version,
         keep_rc=False,
         keep_release=True,
         as_df=True,
-    )
+    ).assign(mvers=lambda x: x.dvers.str.split(".").str[0].astype(int))
 
 
 def main(vers=67):

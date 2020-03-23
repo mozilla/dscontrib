@@ -22,7 +22,11 @@ _queries = {
             submission_date = "2020-03-01"
             AND city != "??"
             AND sample_id=67
-          GROUP BY country, city
+          GROUP BY
+            country,
+            geo_subdivision1,
+            geo_subdivision2,
+            city
           ORDER BY dau DESC
           LIMIT 1000
         ),
@@ -34,7 +38,12 @@ _queries = {
           FROM (
             SELECT
               client_id,
-              CONCAT(country, ":", cd_t.city) AS city,
+              CONCAT(
+                country, ":",
+                geo_subdivision1, ":",
+                geo_subdivision2, ":",
+                city
+              ) AS city,
               ROW_NUMBER() OVER(
                 PARTITION BY client_id ORDER BY submission_date DESC
               ) AS rn

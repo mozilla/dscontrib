@@ -7,7 +7,7 @@ import pandas as pd
 
 
 _queries = {
-    "light_funnel_sampled_mau_city": '''
+    "light_funnel_sampled_dau_city": '''
         WITH top_cities_t AS (
           SELECT
             COUNT(client_id) AS dau,
@@ -16,7 +16,7 @@ _queries = {
               geo_subdivision1, ":",
               geo_subdivision2, ":",
               city
-            ) AS city
+            ) AS geo
           FROM `moz-fx-data-shared-prod.telemetry.clients_daily`
           WHERE
             submission_date = "2020-03-01"
@@ -30,11 +30,10 @@ _queries = {
           ORDER BY dau DESC
           LIMIT 1000
         ),
-
         geo_t AS (
           SELECT
             client_id,
-            city
+            geo
           FROM (
             SELECT
               client_id,
@@ -42,25 +41,29 @@ _queries = {
                 country, ":",
                 geo_subdivision1, ":",
                 geo_subdivision2, ":",
-                city
-              ) AS city,
+                cd_t.city
+              ) AS geo,
               ROW_NUMBER() OVER(
                 PARTITION BY client_id ORDER BY submission_date DESC
               ) AS rn
             FROM `moz-fx-data-shared-prod.telemetry.clients_daily` AS cd_t
-            INNER JOIN (SELECT city FROM top_cities_t) AS top_cities_t
-            ON CONCAT(cd_t.country, ":", cd_t.city) = top_cities_t.city
+            INNER JOIN (SELECT geo FROM top_cities_t) AS top_cities_t
+            ON CONCAT(
+                country, ":",
+                geo_subdivision1, ":",
+                geo_subdivision2, ":",
+                city
+              ) = top_cities_t.geo
             WHERE
               submission_date > "1900-01-01"
               AND sample_id=67
           )
           WHERE rn = 1
         )
-
         SELECT
           submission_date AS date,
           COUNT(client_id) * 100 AS value,
-          geo_t.city AS geo
+          geo_t.geo AS geo
         FROM (
             SELECT
               client_id,
@@ -71,10 +74,9 @@ _queries = {
               AND sample_id=67
               AND attribution.content IS NOT NULL
           )
-
         INNER JOIN geo_t
         USING(client_id)
-        GROUP BY city, submission_date
+        GROUP BY geo, submission_date
         '''
 }
 

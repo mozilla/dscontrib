@@ -75,10 +75,9 @@ def prepare_data(data, training_start, training_end):
     clean_data = {}
     clean_training_data = {}
     for c in data.geo.unique():
-        # Suppress any geo with less than 5000 profiles as per minimum
+        # Suppress any geoXdate with less than 5000 profiles as per minimum
         # aggregation standards for the policy this data will be released under.
-        if (data.query("geo==@c").value.min() < 5000):
-            continue
+        data = data[data.value >= 5000]
         clean_data[c] = data.query("geo==@c").rename(
             columns={"date": "ds", "value": "y"}
         ).sort_values("ds")

@@ -42,10 +42,18 @@ def forecast(training_data, all_data):
         forecast[c]["ci_delta"] = 0
         forecast[c].loc[
             forecast[c].delta > 0, "ci_delta"
-        ] = (forecast[c].y - forecast[c].yhat) / (forecast[c].yhat_upper - forecast[c].yhat)
+        ] = (
+            forecast[c].y - forecast[c].yhat
+        ) / (
+            forecast[c].yhat_upper - forecast[c].yhat
+        )
         forecast[c].loc[
             forecast[c].delta < 0, "ci_delta"
-        ] = (forecast[c].y - forecast[c].yhat) / (forecast[c].yhat - forecast[c].yhat_lower)
+        ] = (
+            forecast[c].y - forecast[c].yhat
+        ) / (
+            forecast[c].yhat - forecast[c].yhat_lower
+        )
         # We allow other fields to be returned here for testing and suppress
         # before publication
         # forecast[c] = forecast[c][["ds", "geo", "delta", "ci_delta"]]

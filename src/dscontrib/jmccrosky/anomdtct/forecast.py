@@ -42,5 +42,6 @@ def forecast(training_data, all_data):
         forecast[c].loc[
             forecast[c].delta < 0, "ci_delta"
         ] = forecast[c].delta / (forecast[c].yhat - forecast[c].yhat_lower)
+        forecast[c] = forecast[c][["ds", "geo", "delta", "ci_delta"]]
         print("Done with {}".format(c))
     return forecast

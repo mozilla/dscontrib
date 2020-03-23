@@ -18,5 +18,4 @@ def pipeline(bq_client, bq_storage_client):
         raw_data, s2d('2016-04-08'), s2d('2019-12-31')
     )
     forecast_data = forecast(clean_training_data, clean_data)
-    forecast_data = forecast_data[["ds", "geo", "delta", "ci_delta"]]
     return forecast_data

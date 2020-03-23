@@ -74,10 +74,12 @@ def get_raw_data(bq_client, bq_storage_client, metric):
 def prepare_data(data, training_start, training_end):
     clean_data = {}
     clean_training_data = {}
+    # Suppress any geoXdate with less than 5000 profiles as per minimum
+    # aggregation standards for the policy this data will be released under.
+    data = data[data.value >= 5000]
     for c in data.geo.unique():
-        # Suppress any geoXdate with less than 5000 profiles as per minimum
-        # aggregation standards for the policy this data will be released under.
-        data = data[data.value >= 5000]
+        if (len(data.query("geo==@c") < 100):
+            continue
         clean_data[c] = data.query("geo==@c").rename(
             columns={"date": "ds", "value": "y"}
         ).sort_values("ds")

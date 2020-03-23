@@ -11,7 +11,12 @@ _queries = {
         WITH top_cities_t AS (
           SELECT
             COUNT(client_id) AS dau,
-            CONCAT(country, ":", geo_subdivision1, ":", geo_subdivision2, ":", city) AS city
+            CONCAT(
+              country, ":",
+              geo_subdivision1, ":",
+              geo_subdivision2, ":",
+              city
+            ) AS city
           FROM `moz-fx-data-shared-prod.telemetry.clients_daily`
           WHERE
             submission_date = "2020-03-01"

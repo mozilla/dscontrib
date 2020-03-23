@@ -77,9 +77,9 @@ def prepare_data(data, training_start, training_end):
     for c in data.geo.unique():
         # Suppress any geo with less than 5000 profiles as per minimum
         # aggregation standards for the policy this data will be released under.
-        if (data.query("city==@c").value.min() < 5000):
+        if (data.query("geo==@c").value.min() < 5000):
             continue
-        clean_data[c] = data.query("city==@c").rename(
+        clean_data[c] = data.query("geo==@c").rename(
             columns={"date": "ds", "value": "y"}
         ).sort_values("ds")
         clean_data[c]['ds'] = pd.to_datetime(clean_data[c]['ds']).dt.date

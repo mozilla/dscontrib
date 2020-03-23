@@ -45,7 +45,7 @@ _queries = {
 
         SELECT
           submission_date AS date,
-          COUNT(client_id) AS value,
+          COUNT(client_id) * 100 AS value,
           geo_t.city AS geo
         FROM (
             SELECT

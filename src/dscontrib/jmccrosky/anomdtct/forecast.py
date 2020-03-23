@@ -32,7 +32,7 @@ def forecast(training_data, all_data):
             periods=(all_data[c].ds.max() - training_data[c].ds.max()).days,
             include_history=False
         )
-        if (len(forecast_period) < 100):
+        if (len(forecast_period) < 10):
             continue
         forecast[c] = model.predict(forecast_period)
         forecast[c]['ds'] = pd.to_datetime(forecast[c]['ds']).dt.date

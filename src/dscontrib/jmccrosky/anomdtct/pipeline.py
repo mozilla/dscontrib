@@ -12,7 +12,7 @@ def pipeline(bq_client, bq_storage_client):
     raw_data = get_raw_data(
         bq_client,
         bq_storage_client,
-        "light_funnel_sampled_mau_city"
+        "light_funnel_sampled_dau_city"
     )
     (clean_data, clean_training_data) = prepare_data(
         raw_data, s2d('2016-04-08'), s2d('2019-12-31')

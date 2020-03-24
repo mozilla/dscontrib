@@ -37,7 +37,10 @@ def forecast(training_data, all_data):
         if (len(training_data) < 600):
             continue
         print("Starting with {}".format(c))
-        model = Prophet(holidays=pd.concat([chinese_new_year, holi], ignore_index=True), seasonality_mode='multiplicative')
+        model = Prophet(
+            holidays=pd.concat([chinese_new_year, holi], ignore_index=True),
+            seasonality_mode='multiplicative'
+        )
         model.fit(training_data[c])
         forecast_period = model.make_future_dataframe(
             periods=(all_data[c].ds.max() - training_data[c].ds.max()).days,

@@ -7,8 +7,8 @@ import pandas as pd
 from fbprophet import Prophet
 from dscontrib.jmccrosky.forecast.utils import s2d
 
-# The only holiday we have identified the need to explicitly model is Chinese
-# New Year
+# The only holidays we have identified the need to explicitly model are Chinese
+# New Year and Holi
 chinese_new_year = pd.DataFrame({
     'ds': [
         s2d("2016-02-08"), s2d("2017-01-28"), s2d("2018-02-16"),
@@ -20,13 +20,24 @@ chinese_new_year = pd.DataFrame({
 })
 
 
+holi = pd.DataFrame({
+    'ds': [
+        s2d("2016-03-06"), s2d("2017-03-13"), s2d("2018-03-02"),
+        s2d("2019-03-21"), s2d("2020-03-10")
+    ],
+    'holiday': "holi",
+    'lower_window': -1,
+    'upper_window': 1,
+})
+
+
 def forecast(training_data, all_data):
     forecast = {}
     for c in all_data.keys():
-        if (len(training_data) < 100):
+        if (len(training_data) < 600):
             continue
         print("Starting with {}".format(c))
-        model = Prophet(holidays=chinese_new_year)
+        model = Prophet(pd.concat([chinese_new_year, holi], ignore_index=True))
         model.fit(training_data[c])
         forecast_period = model.make_future_dataframe(
             periods=(all_data[c].ds.max() - training_data[c].ds.max()).days,

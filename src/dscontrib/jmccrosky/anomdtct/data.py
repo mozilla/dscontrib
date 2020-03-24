@@ -94,7 +94,7 @@ def prepare_data(data, training_start, training_end):
     # aggregation standards for the policy this data will be released under.
     data = data[data.value >= 5000]
     for c in data.geo.unique():
-        if (len(data.query("geo==@c")) < 100):
+        if (len(data.query("geo==@c")) < 600):
             continue
         clean_data[c] = data.query("geo==@c").rename(
             columns={"date": "ds", "value": "y"}

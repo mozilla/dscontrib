@@ -34,7 +34,7 @@ holi = pd.DataFrame({
 def forecast(training_data, all_data):
     forecast = {}
     for c in all_data.keys():
-        if (len(training_data) < 600):
+        if (len(training_data[c]) < 600):
             continue
         print("Starting with {}".format(c))
         # We use a mostly "default" model as we find it to be highly robust and

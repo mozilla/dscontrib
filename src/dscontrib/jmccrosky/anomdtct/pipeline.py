@@ -3,7 +3,6 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
-import pandas as pd
 from dscontrib.jmccrosky.forecast.utils import s2d
 from dscontrib.jmccrosky.anomdtct.data import get_raw_data, prepare_data
 from dscontrib.jmccrosky.anomdtct.forecast import forecast

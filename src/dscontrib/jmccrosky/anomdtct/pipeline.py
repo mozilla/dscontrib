@@ -31,7 +31,5 @@ def pipeline(bq_client, bq_storage_client):
     country_forecast_data = forecast(
         country_clean_training_data, country_clean_data
     )
-    return pd.concat(
-        [city_forecast_data, country_forecast_data],
-        ignore_index=True
-    )
+    city_forecast_data.update(country_forecast_data)
+    return city_forecast_data

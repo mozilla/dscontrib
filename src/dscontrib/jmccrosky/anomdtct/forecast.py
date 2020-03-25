@@ -37,6 +37,11 @@ def forecast(training_data, all_data):
         if (len(training_data) < 600):
             continue
         print("Starting with {}".format(c))
+        # We use a mostly "default" model as we find it to be highly robust and
+        # do not have resources to individually model each geo.  The only
+        # adjustments made are the holidays sspecified and multiplicative
+        # seasonality that is more appropriate, especially for regions in which
+        # Firefox usage has grown from near-zero in our training period.
         model = Prophet(
             holidays=pd.concat([chinese_new_year, holi], ignore_index=True),
             seasonality_mode='multiplicative'
@@ -51,6 +56,7 @@ def forecast(training_data, all_data):
         forecast[c] = model.predict(forecast_period)
         forecast[c]['ds'] = pd.to_datetime(forecast[c]['ds']).dt.date
         forecast[c] = forecast[c][["ds", "yhat", "yhat_lower", "yhat_upper"]]
+        # We join the forecast with our full data to allow calculation of deviations.
         forecast[c] = forecast[c].merge(all_data[c], on="ds", how="inner")
         forecast[c]["delta"] = (forecast[c].y - forecast[c].yhat) / forecast[c].y
         forecast[c]["ci_delta"] = 0

@@ -6,8 +6,11 @@
 import pandas as pd
 
 
+# Note we obtain the most recent geo for each profile, as updates to the IPGeo
+# database that we use create excessive noise.  Also note that we restrict to
+# the top 1000 cities according to DAU on an arbitrary day.
 _queries = {
-    "light_funnel_sampled_dau_city": '''
+    "light_funnel_dau_city": '''
         WITH top_cities_t AS (
           SELECT
             COUNT(client_id) AS dau,
@@ -21,7 +24,6 @@ _queries = {
           WHERE
             submission_date = "2020-03-01"
             AND city != "??"
-            AND sample_id=67
           GROUP BY
             country,
             geo_subdivision1,
@@ -56,13 +58,12 @@ _queries = {
               ) = top_cities_t.geo
             WHERE
               submission_date > "1900-01-01"
-              AND sample_id=67
           )
           WHERE rn = 1
         )
         SELECT
           submission_date AS date,
-          COUNT(client_id) * 100 AS value,
+          COUNT(client_id) AS value,
           geo_t.geo AS geo
         FROM (
             SELECT
@@ -71,7 +72,41 @@ _queries = {
             FROM `moz-fx-data-shared-prod.telemetry.clients_daily`
             WHERE
               submission_date > "1900-01-01"
-              AND sample_id=67
+              AND attribution.content IS NOT NULL
+          )
+        INNER JOIN geo_t
+        USING(client_id)
+        GROUP BY geo, submission_date
+        ''',
+    "light_funnel_dau_country": '''
+        WITH geo_t AS (
+          SELECT
+            client_id,
+            geo
+          FROM (
+            SELECT
+              client_id,
+              country AS geo,
+              ROW_NUMBER() OVER(
+                PARTITION BY client_id ORDER BY submission_date DESC
+              ) AS rn
+            FROM `moz-fx-data-shared-prod.telemetry.clients_daily` AS cd_t
+            WHERE
+              submission_date > "1900-01-01"
+          )
+          WHERE rn = 1
+        )
+        SELECT
+          submission_date AS date,
+          COUNT(client_id) AS value,
+          geo_t.geo AS geo
+        FROM (
+            SELECT
+              client_id,
+              submission_date,
+            FROM `moz-fx-data-shared-prod.telemetry.clients_daily`
+            WHERE
+              submission_date > "1900-01-01"
               AND attribution.content IS NOT NULL
           )
         INNER JOIN geo_t
@@ -94,6 +129,8 @@ def prepare_data(data, training_start, training_end):
     # aggregation standards for the policy this data will be released under.
     data = data[data.value >= 5000]
     for c in data.geo.unique():
+        # We don't want to icnlude a rregion unless we have at least about
+        # two years of training data for the model
         if (len(data.query("geo==@c")) < 600):
             continue
         clean_data[c] = data.query("geo==@c").rename(

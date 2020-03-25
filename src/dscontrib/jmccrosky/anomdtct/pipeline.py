@@ -3,19 +3,35 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
+import pandas as pd
 from dscontrib.jmccrosky.forecast.utils import s2d
 from dscontrib.jmccrosky.anomdtct.data import get_raw_data, prepare_data
 from dscontrib.jmccrosky.anomdtct.forecast import forecast
 
 
 def pipeline(bq_client, bq_storage_client):
-    raw_data = get_raw_data(
+    city_raw_data = get_raw_data(
         bq_client,
         bq_storage_client,
-        "light_funnel_sampled_dau_city"
+        "light_funnel_dau_city"
     )
-    (clean_data, clean_training_data) = prepare_data(
-        raw_data, s2d('2016-04-08'), s2d('2019-12-31')
+    (city_clean_data, city_clean_training_data) = prepare_data(
+        city_raw_data, s2d('2016-04-08'), s2d('2019-12-31')
     )
-    forecast_data = forecast(clean_training_data, clean_data)
-    return forecast_data
+    city_forecast_data = forecast(city_clean_training_data, city_clean_data)
+
+    country_raw_data = get_raw_data(
+        bq_client,
+        bq_storage_client,
+        "light_funnel_dau_country"
+    )
+    (country_clean_data, country_clean_training_data) = prepare_data(
+        country_raw_data, s2d('2016-04-08'), s2d('2019-12-31')
+    )
+    country_forecast_data = forecast(
+        country_clean_training_data, country_clean_data
+    )
+    return pd.concat(
+        [city_forecast_data, country_forecast_data],
+        ignore_index=True
+    )

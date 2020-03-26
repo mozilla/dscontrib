@@ -15,7 +15,7 @@ def pipeline(bq_client, bq_storage_client):
         "light_funnel_dau_city"
     )
     (city_clean_data, city_clean_training_data) = prepare_data(
-        city_raw_data, s2d('2016-04-08'), s2d('2019-12-31')
+        city_raw_data, s2d('2016-04-08'), s2d('2020-01-30')
     )
     city_forecast_data = forecast(city_clean_training_data, city_clean_data)
 
@@ -25,7 +25,7 @@ def pipeline(bq_client, bq_storage_client):
         "light_funnel_dau_country"
     )
     (country_clean_data, country_clean_training_data) = prepare_data(
-        country_raw_data, s2d('2016-04-08'), s2d('2019-12-31')
+        country_raw_data, s2d('2016-04-08'), s2d('2020-01-30')
     )
     country_forecast_data = forecast(
         country_clean_training_data, country_clean_data

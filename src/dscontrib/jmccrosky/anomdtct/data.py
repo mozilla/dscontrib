@@ -129,7 +129,7 @@ def prepare_data(data, training_start, training_end):
     # aggregation standards for the policy this data will be released under.
     data = data[data.value >= 5000]
     for c in data.geo.unique():
-        # We don't want to icnlude a rregion unless we have at least about
+        # We don't want to include a region unless we have at least about
         # two years of training data for the model
         if (len(data.query("geo==@c")) < 600):
             continue

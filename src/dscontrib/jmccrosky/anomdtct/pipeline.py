@@ -74,7 +74,9 @@ def pipeline(bq_client, bq_storage_client, output_bq_client):
             [
                 output_data,
                 pd.DataFrame({
-                    "date": pd.to_datetime(city_forecast_data[geo].ds).dt.strftime("%Y-%m-%d"),
+                    "date": pd.to_datetime(
+                        city_forecast_data[geo].ds
+                    ).dt.strftime("%Y-%m-%d"),
                     "metric": "desktop_dau",
                     "deviation": city_forecast_data[geo].delta,
                     "ci_deviation": city_forecast_data[geo].ci_delta,

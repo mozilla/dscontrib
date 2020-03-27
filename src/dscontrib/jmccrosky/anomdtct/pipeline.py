@@ -83,7 +83,7 @@ def pipeline(bq_client, bq_storage_client, output_bq_client):
             ],
             ignore_index=True
         )
-    dataset_ref = output_bq_client.dataset("usage_anomalies")
+    dataset_ref = output_bq_client.dataset("analysis")
     table_ref = dataset_ref.table("deviations")
     try:
         output_bq_client.delete_table(table_ref)

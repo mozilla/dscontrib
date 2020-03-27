@@ -74,8 +74,5 @@ def forecast(training_data, all_data):
         ) / (
             forecast[c].yhat - forecast[c].yhat_lower
         )
-        # We allow other fields to be returned here for testing and suppress
-        # before publication
-        # forecast[c] = forecast[c][["ds", "geo", "delta", "ci_delta"]]
         print("Done with {}".format(c))
     return forecast

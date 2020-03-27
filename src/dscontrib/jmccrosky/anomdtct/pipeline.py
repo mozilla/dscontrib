@@ -100,8 +100,10 @@ def pipeline(bq_client, bq_storage_client, output_bq_client):
     ]
     table = bigquery.Table(table_ref, schema=schema)
     table = output_bq_client.create_table(table)
-    errors = output_bq_client.insert_rows(
-        table,
-        list(output_data.itertuples(index=False, name=None))
-    )
+    n = len(output_data)
+    for i in range(0, n, 10000):
+        errors = output_bq_client.insert_rows(
+            table,
+            list(output_data[i:min(i + 10000, n)].itertuples(index=False, name=None))
+        )
     return errors

@@ -74,7 +74,7 @@ def pipeline(bq_client, bq_storage_client, output_bq_client):
             [
                 output_data,
                 pd.DataFrame({
-                    "date": city_forecast_data[geo].date,
+                    "date": pd.to_datetime(city_forecast_data[geo].ds).dt.strftime("%Y-%m-%d"),
                     "metric": "desktop_dau",
                     "deviation": city_forecast_data[geo].delta,
                     "ci_deviation": city_forecast_data[geo].ci_delta,
@@ -90,15 +90,14 @@ def pipeline(bq_client, bq_storage_client, output_bq_client):
     except NotFound:
         pass
     schema = [
-        bigquery.SchemaField('date', 'DATE', mode='REQUIRED'),
-        bigquery.SchemaField('metric', 'STRING', mode='REQUIRED'),
-        bigquery.SchemaField('deviation', 'FLOAT', mode='REQUIRED'),
         bigquery.SchemaField('ci_deviation', 'FLOAT', mode='REQUIRED'),
+        bigquery.SchemaField('date', 'DATE', mode='REQUIRED'),
+        bigquery.SchemaField('deviation', 'FLOAT', mode='REQUIRED'),
         bigquery.SchemaField('geography', 'STRING', mode='REQUIRED'),
+        bigquery.SchemaField('metric', 'STRING', mode='REQUIRED'),
     ]
     table = bigquery.Table(table_ref, schema=schema)
     table = output_bq_client.create_table(table)
-    output_data['date'] = pd.to_datetime(output_data['date']).dt.date
     errors = output_bq_client.insert_rows(
         table,
         list(output_data.itertuples(index=False, name=None))

@@ -106,4 +106,4 @@ def pipeline(bq_client, bq_storage_client, output_bq_client):
             table,
             list(output_data[i:min(i + 10000, n)].itertuples(index=False, name=None))
         )
-    return errors
+    return (output_data, errors)

@@ -43,8 +43,10 @@ def pipeline(bq_client, bq_storage_client, output_bq_client):
     metrics = {
         "light_funnel_dau_city": "desktop_dau",
         "light_funnel_dau_country": "desktop_dau",
-        "light_funnel_mean_active_hours_per_profile_city": "mean_active_hours_per_client",
-        "light_funnel_mean_active_hours_per_profile_country": "mean_active_hours_per_client"
+        "light_funnel_mean_active_hours_per_profile_city":
+            "mean_active_hours_per_client",
+        "light_funnel_mean_active_hours_per_profile_country":
+            "mean_active_hours_per_client",
     }
 
     output_data = pd.DataFrame({

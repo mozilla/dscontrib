@@ -40,28 +40,13 @@ def get_data(bq_client, bq_storage_client):
 
 # Write public data to BigQuery
 def pipeline(bq_client, bq_storage_client, output_bq_client):
-    city_raw_data = get_raw_data(
-        bq_client,
-        bq_storage_client,
-        "light_funnel_dau_city"
-    )
-    (city_clean_data, city_clean_training_data) = prepare_data(
-        city_raw_data, s2d('2016-04-08'), s2d('2020-01-30')
-    )
-    city_forecast_data = forecast(city_clean_training_data, city_clean_data)
+    metrics = {
+        "light_funnel_dau_city": "desktop_dau",
+        "light_funnel_dau_country": "desktop_dau",
+        "light_funnel_mean_active_hours_per_profile_city": "mean_active_hours_per_client",
+        "light_funnel_mean_active_hours_per_profile_country": "mean_active_hours_per_client"
+    }
 
-    country_raw_data = get_raw_data(
-        bq_client,
-        bq_storage_client,
-        "light_funnel_dau_country"
-    )
-    (country_clean_data, country_clean_training_data) = prepare_data(
-        country_raw_data, s2d('2016-04-08'), s2d('2020-01-30')
-    )
-    country_forecast_data = forecast(
-        country_clean_training_data, country_clean_data
-    )
-    city_forecast_data.update(country_forecast_data)
     output_data = pd.DataFrame({
         "date": [],
         "metric": [],
@@ -69,22 +54,34 @@ def pipeline(bq_client, bq_storage_client, output_bq_client):
         "ci_deviation": [],
         "geography": [],
     })
-    for geo in city_forecast_data:
-        output_data = pd.concat(
-            [
-                output_data,
-                pd.DataFrame({
-                    "date": pd.to_datetime(
-                        city_forecast_data[geo].ds
-                    ).dt.strftime("%Y-%m-%d"),
-                    "metric": "desktop_dau",
-                    "deviation": city_forecast_data[geo].delta,
-                    "ci_deviation": city_forecast_data[geo].ci_delta,
-                    "geography": geo,
-                })
-            ],
-            ignore_index=True
+
+    for metric in metrics.keys():
+        raw_data = get_raw_data(
+            bq_client,
+            bq_storage_client,
+            metric
         )
+        (clean_data, clean_training_data) = prepare_data(
+            raw_data, s2d('2016-04-08'), s2d('2020-01-30')
+        )
+        forecast_data = forecast(clean_training_data, clean_data)
+
+        for geo in forecast_data:
+            output_data = pd.concat(
+                [
+                    output_data,
+                    pd.DataFrame({
+                        "date": pd.to_datetime(
+                            forecast_data[geo].ds
+                        ).dt.strftime("%Y-%m-%d"),
+                        "metric": metrics[metric],
+                        "deviation": forecast_data[geo].delta,
+                        "ci_deviation": forecast_data[geo].ci_delta,
+                        "geography": geo,
+                    })
+                ],
+                ignore_index=True
+            )
     dataset_ref = output_bq_client.dataset("analysis")
     table_ref = dataset_ref.table("deviations")
     try:

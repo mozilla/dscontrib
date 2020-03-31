@@ -113,7 +113,7 @@ _queries = {
         USING(client_id)
         GROUP BY geo, submission_date
         ''',
-    "light_funnel_active_hours_city": '''
+    "light_funnel_mean_active_hours_per_profile_city": '''
         WITH top_cities_t AS (
           SELECT
             COUNT(client_id) AS dau,
@@ -182,7 +182,7 @@ _queries = {
         USING(client_id)
         GROUP BY geo, submission_date
         ''',
-    "light_funnel_active_hours_country": '''
+    "light_funnel_mean_active_hours_per_profile_country": '''
         WITH geo_t AS (
           SELECT
             client_id,

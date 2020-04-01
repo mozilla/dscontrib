@@ -64,6 +64,7 @@ _queries = {
         SELECT
           submission_date AS date,
           COUNT(client_id) AS value,
+          COUNT(client_id) AS dau,
           geo_t.geo AS geo
         FROM (
             SELECT
@@ -99,6 +100,7 @@ _queries = {
         SELECT
           submission_date AS date,
           COUNT(client_id) AS value,
+          COUNT(client_id) AS dau,
           geo_t.geo AS geo
         FROM (
             SELECT
@@ -167,6 +169,7 @@ _queries = {
         SELECT
           submission_date AS date,
           AVG(active_hours_sum) AS value,
+          COUNT(client_id) AS dau,
           geo_t.geo AS geo
         FROM (
             SELECT
@@ -203,6 +206,7 @@ _queries = {
         SELECT
           submission_date AS date,
           AVG(active_hours_sum) AS value,
+          COUNT(client_id) AS dau,
           geo_t.geo AS geo
         FROM (
             SELECT
@@ -232,7 +236,7 @@ def prepare_data(data, training_start, training_end):
     clean_training_data = {}
     # Suppress any geoXdate with less than 5000 profiles as per minimum
     # aggregation standards for the policy this data will be released under.
-    data = data[data.value >= 5000]
+    data = data[data.dau >= 5000].drop(columns=["dau"])
     for c in data.geo.unique():
         # We don't want to include a region unless we have at least about
         # two years of training data for the model

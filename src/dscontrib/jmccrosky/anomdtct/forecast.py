@@ -39,7 +39,6 @@ easter_west = pd.DataFrame({
     'holiday': "easter_west",
     'lower_window': -6,
     'upper_window': 1,
-})ndow': 1,
 })
 
 

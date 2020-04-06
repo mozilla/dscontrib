@@ -49,13 +49,16 @@ def pipeline(bq_client, bq_storage_client, output_bq_client):
             "mean_active_hours_per_client",
     }
 
-    output_data = pd.DataFrame({
-        "date": [],
-        "metric": [],
-        "deviation": [],
-        "ci_deviation": [],
-        "geography": [],
-    })
+    output_data = pd.DataFrame(
+        {
+            "date": [],
+            "metric": [],
+            "deviation": [],
+            "ci_deviation": [],
+            "geography": [],
+        },
+        columns=["date", "metric", "deviation", "ci_deviation", "geography"]
+    )
 
     for metric in metrics.keys():
         raw_data = get_raw_data(

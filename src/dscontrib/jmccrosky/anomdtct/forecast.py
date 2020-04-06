@@ -31,6 +31,29 @@ holi = pd.DataFrame({
 })
 
 
+easter_west = pd.DataFrame({
+    'ds': [
+        s2d("2016-03-27"), s2d("2017-04-16"), s2d("2018-04-01"),
+        s2d("2019-04-21"), s2d("2020-04-12")
+    ],
+    'holiday': "easter_west",
+    'lower_window': -6,
+    'upper_window': 1,
+})ndow': 1,
+})
+
+
+easter_east = pd.DataFrame({
+    'ds': [
+        s2d("2016-05-01"), s2d("2017-04-16"), s2d("2018-04-08"),
+        s2d("2019-04-28"), s2d("2020-04-19")
+    ],
+    'holiday': "easter_east",
+    'lower_window': -6,
+    'upper_window': 1,
+})
+
+
 def forecast(training_data, all_data):
     forecast = {}
     for c in all_data.keys():
@@ -43,7 +66,9 @@ def forecast(training_data, all_data):
         # seasonality that is more appropriate, especially for regions in which
         # Firefox usage has grown from near-zero in our training period.
         model = Prophet(
-            holidays=pd.concat([chinese_new_year, holi], ignore_index=True),
+            holidays=pd.concat([
+                chinese_new_year, holi, easter_west, easter_east
+            ], ignore_index=True),
             seasonality_mode='multiplicative'
         )
         model.fit(training_data[c])

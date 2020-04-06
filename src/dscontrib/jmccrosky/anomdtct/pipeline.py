@@ -75,15 +75,21 @@ def pipeline(bq_client, bq_storage_client, output_bq_client):
             output_data = pd.concat(
                 [
                     output_data,
-                    pd.DataFrame({
-                        "date": pd.to_datetime(
-                            forecast_data[geo].ds
-                        ).dt.strftime("%Y-%m-%d"),
-                        "metric": metrics[metric],
-                        "deviation": forecast_data[geo].delta,
-                        "ci_deviation": forecast_data[geo].ci_delta,
-                        "geography": geo,
-                    })
+                    pd.DataFrame(
+                        {
+                            "date": pd.to_datetime(
+                                forecast_data[geo].ds
+                            ).dt.strftime("%Y-%m-%d"),
+                            "metric": metrics[metric],
+                            "deviation": forecast_data[geo].delta,
+                            "ci_deviation": forecast_data[geo].ci_delta,
+                            "geography": geo,
+                        },
+                        columns=[
+                            "date", "metric", "deviation",
+                            "ci_deviation", "geography"
+                        ]
+                    )
                 ],
                 ignore_index=True
             )
@@ -94,11 +100,11 @@ def pipeline(bq_client, bq_storage_client, output_bq_client):
     except NotFound:
         pass
     schema = [
-        bigquery.SchemaField('ci_deviation', 'FLOAT', mode='REQUIRED'),
         bigquery.SchemaField('date', 'DATE', mode='REQUIRED'),
-        bigquery.SchemaField('deviation', 'FLOAT', mode='REQUIRED'),
-        bigquery.SchemaField('geography', 'STRING', mode='REQUIRED'),
         bigquery.SchemaField('metric', 'STRING', mode='REQUIRED'),
+        bigquery.SchemaField('deviation', 'FLOAT', mode='REQUIRED'),
+        bigquery.SchemaField('ci_deviation', 'FLOAT', mode='REQUIRED'),
+        bigquery.SchemaField('geography', 'STRING', mode='REQUIRED'),
     ]
     table = bigquery.Table(table_ref, schema=schema)
     table = output_bq_client.create_table(table)

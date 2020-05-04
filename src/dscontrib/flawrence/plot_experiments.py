@@ -210,10 +210,9 @@ def crunch_nums_ts(ts, col_label, stats_model, ref_branch_label='control', sc=No
                 v, col_label, ref_branch_label=ref_branch_label
             )
         elif stats_model == 'bootstrap':
-            assert sc is not None
             bla = mabb.compare_branches(
-                sc, v, col_label,
-                ref_branch_label=ref_branch_label, threshold_quantile=0.9999
+                v, col_label, ref_branch_label=ref_branch_label,
+                threshold_quantile=0.999, sc=sc
             )
         else:
             raise NotImplementedError

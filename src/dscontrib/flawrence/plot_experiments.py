@@ -27,8 +27,8 @@ def plot_ts(t_df, col_label, stats_model, ref_branch_label='control', sc=None):
         plot_means_line(ax1, data['individual'], ref_branch_label)
         plot_uplifts_line(ax2, data['comparative'], ref_branch_label)
     else:
-        plot_means_scatter(ax1, data['individual'])
-        plot_uplifts_scatter(ax2, data['comparative'])
+        plot_means_scatter(ax1, data['individual'], ref_branch_label)
+        plot_uplifts_scatter(ax2, data['comparative'], ref_branch_label)
 
     ax1.set_title("{} per user over time".format(col_label))
     ax1.legend()

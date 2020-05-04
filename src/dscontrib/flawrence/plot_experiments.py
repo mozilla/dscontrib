@@ -25,10 +25,10 @@ def plot_ts(t_df, col_label, stats_model, ref_branch_label='control', sc=None):
     # Hackily guess whether to interpolate the data points
     if len(data['individual']) >= 10:
         plot_means_line(ax1, data['individual'], ref_branch_label)
-        plot_uplifts_line(ax2, data['comparative'], ref_branch_label)
+        plot_uplifts_line(ax2, data['comparative'])
     else:
         plot_means_scatter(ax1, data['individual'], ref_branch_label)
-        plot_uplifts_scatter(ax2, data['comparative'], ref_branch_label)
+        plot_uplifts_scatter(ax2, data['comparative'])
 
     ax1.set_title("{} per user over time".format(col_label))
     ax1.legend()

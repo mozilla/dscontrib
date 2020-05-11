@@ -37,3 +37,21 @@ def plot_trees_aggs_rel_uplift(rel_up, cs=None):
     yts, i = plot_trees_aggs(rel_up, cs=cs)
     plt.vlines(0, i, [0], "k", linestyle="-.")
     plt.xlabel("% uplift")
+
+
+def decorate(**options):
+    """
+    Stolen from Allen Downey
+    https://colab.research.google.com/github/AllenDowney/
+    SurvivalAnalysisPython/blob/master/light_bulb.ipynb
+
+    Decorate the current axes.
+    Call decorate with keyword arguments like
+    decorate(title='Title',
+             xlabel='x',
+             ylabel='y')
+    The keyword arguments can be any of the axis properties
+    https://matplotlib.org/api/axes_api.html
+    """
+    plt.gca().set(**options)
+    plt.tight_layout()

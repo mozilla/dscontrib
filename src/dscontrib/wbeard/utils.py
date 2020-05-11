@@ -14,6 +14,10 @@ SUB_FMT_DASH = "%Y-%m-%d"
 SUB_FMT_SPK = "yyyyMMdd"
 
 
+def lmap(f, xs):
+    return [f(x) for x in xs]
+    
+
 class Date:
     def __init__(self, date_str):
         self.date_str = date_str
@@ -55,11 +59,12 @@ def s3_dash(date):
 
 
 # Stats
-def clip_srs(s, clip_percentile=99.9, ignore_nulls=True, vb=False):
-    if ignore_nulls:
-        val = np.percentile(s[s == s], clip_percentile)
-    else:
-        val = np.percentile(s, clip_percentile)
+def clip_srs(s, clip_percentile=99.9, ignore_nulls=True, val=None, vb=False):
+    if val is None:
+        if ignore_nulls:
+            val = np.percentile(s[s == s], clip_percentile)
+        else:
+            val = np.percentile(s, clip_percentile)
     if vb:
         print("{} -> {}".format(s.max(), val))
     sc = np.clip(s, None, val)

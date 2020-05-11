@@ -1,0 +1,41 @@
+from os.path import abspath, expanduser
+import os
+from pathlib import PosixPath
+
+import pandas as pd
+from google.oauth2 import service_account  # type: ignore
+
+# bucket: 'moz-fx-data-derived-datasets-analysis'
+PROJ_DS = "moz-fx-data-bq-data-science"
+PROJ_DD = "moz-fx-data-derived-datasets"
+
+_loc = os.environ.get("BQ_CREDS")
+if _loc is not None:
+    creds_loc = abspath(expanduser(_loc))
+    creds = service_account.Credentials.from_service_account_file(creds_loc)
+else:
+    creds = None
+    print("Warning, $BQ_CREDS not found in environment")
+
+
+def bq_read(q):
+    return pd.read_gbq(
+        q, project_id=creds.project_id, credentials=creds, dialect="standard"
+    )
+
+
+def bq_read2(q):
+    path = PosixPath(q)
+    if path.exists():
+        with open(path, "r") as fp:
+            q = fp.read()
+    return pd.read_gbq(
+        q, project_id=creds.project_id, credentials=creds, dialect="standard"
+    )
+
+
+udf = """
+CREATE TEMP FUNCTION nano_dt(x INT64) AS (
+  DATETIME(TIMESTAMP_SECONDS(div(x, CAST(1e9 as int64)) ))
+);
+"""

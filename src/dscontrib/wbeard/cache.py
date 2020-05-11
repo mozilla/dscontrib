@@ -2,8 +2,21 @@ from functools import wraps
 from pathlib import Path
 import shutil
 
+from os import path
+import os
+
 import joblib
 import pandas as pd
+
+
+def cached_fn_called(f, *a, **k):
+    """
+    For joblib cached func `f`, return whether
+    or not it has been called with `*a, **k`
+    """
+    base, dir = f._get_output_identifiers(*a, **k)
+    cached_dir = path.join(f.store_backend.location, base, dir)
+    return path.exists(cached_dir)
 
 
 def parquet_cache(mem: joblib.Memory, engine="auto"):
@@ -42,3 +55,28 @@ def parquet_cache(mem: joblib.Memory, engine="auto"):
         return deco
 
     return mk_deco
+
+
+class Df_cache:
+    def __init__(self, loc):
+        self.loc = Path(loc)
+
+    def __call__(self, f):
+        return self.mk_deco(f)
+
+    def mk_deco(self, f):
+        @wraps(f)
+        def wrapper(*a, **k):
+            if self.loc.exists():
+                print(f"cached at {self.loc}")
+                return pd.read_parquet(self.loc)
+
+            df = f(*a, **k)
+            assert isinstance(df, pd.DataFrame), f"{f} must return a DataFrame"
+            df.to_parquet(self.loc)
+            return df
+
+        return wrapper
+
+    def clear(self):
+        os.remove(str(self.loc))

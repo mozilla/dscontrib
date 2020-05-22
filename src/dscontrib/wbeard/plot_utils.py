@@ -1,5 +1,6 @@
 import itertools as it
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 ########
@@ -55,3 +56,37 @@ def decorate(**options):
     """
     plt.gca().set(**options)
     plt.tight_layout()
+
+
+def mk_sublots(nrows=1, ncols=2, figsize=(16, 5), **kw):
+    """
+    -> ("axes", "iter.n")
+    """
+    import matplotlib.pyplot as plt
+
+    _, axs_ = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize, **kw)
+
+    mk_sublots.axs_ = axs_
+    axs = iter(axs_)
+    axs = np.nditer(axs_, flags=["refs_ok"])
+
+    def sca_ax_iter():
+        for ax in axs:
+            ax = ax[()]
+            plt.sca(ax)
+            yield ax
+
+    class Axs(object):
+        @property
+        def n(self):
+            return next(sis)
+
+        def __next__(self):
+            return next(sis)
+
+        def __iter__(self):
+            for a in sca_ax_iter():
+                yield a
+
+    sis = sca_ax_iter()
+    return axs, Axs()

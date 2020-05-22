@@ -1,4 +1,6 @@
+from contextlib import contextmanager
 import datetime as dt
+import os
 
 import pandas as pd
 import numpy as np
@@ -16,7 +18,7 @@ SUB_FMT_SPK = "yyyyMMdd"
 
 def lmap(f, xs):
     return [f(x) for x in xs]
-    
+
 
 class Date:
     def __init__(self, date_str):
@@ -69,3 +71,24 @@ def clip_srs(s, clip_percentile=99.9, ignore_nulls=True, val=None, vb=False):
         print("{} -> {}".format(s.max(), val))
     sc = np.clip(s, None, val)
     return sc
+
+
+@contextmanager
+def working_directory(path):
+    """
+    A context manager which changes the working directory to the given
+    path, and then changes it back to its previous value on exit.
+
+    Usage:
+    > # Do something in original directory
+    > with working_directory('/my/new/path'):
+    >     # Do something in new directory
+    > # Back to old directory
+    """
+
+    prev_cwd = os.getcwd()
+    os.chdir(path)
+    try:
+        yield
+    finally:
+        os.chdir(prev_cwd)

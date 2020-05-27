@@ -1,5 +1,7 @@
 import itertools as it
+
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FuncFormatter
 import numpy as np
 
 
@@ -90,3 +92,15 @@ def mk_sublots(nrows=1, ncols=2, figsize=(16, 5), **kw):
 
     sis = sca_ax_iter()
     return axs, Axs()
+
+
+def log_scale(xaxis=True):
+    fmtr = FuncFormatter(lambda x, p: format(int(x), ","))
+
+    if xaxis:
+        plt.xscale("log")
+        ax = plt.gca().get_xaxis()
+    else:
+        plt.yscale("log")
+        ax = plt.gca().get_yaxis()
+    ax.set_major_formatter(fmtr)

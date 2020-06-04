@@ -1,6 +1,7 @@
 from os.path import abspath, expanduser
 import os
 from pathlib import PosixPath
+import re
 
 import pandas as pd
 from google.oauth2 import service_account  # type: ignore
@@ -39,3 +40,8 @@ CREATE TEMP FUNCTION nano_dt(x INT64) AS (
   DATETIME(TIMESTAMP_SECONDS(div(x, CAST(1e9 as int64)) ))
 );
 """
+
+
+def to_sql_column_name(s):
+    s = s.lower()
+    return re.sub(r"[^A-Za-z\d_]+", "_", s)

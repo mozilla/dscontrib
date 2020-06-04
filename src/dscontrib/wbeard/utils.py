@@ -52,6 +52,12 @@ def add_days(n, date):
     return ret
 
 
+def round_week(d):
+    d = pd.to_datetime(d.dt.date)
+    dow = pd.to_timedelta(d.dt.dayofweek, unit="d")
+    return d - dow
+
+
 def s3(date):
     return date.strftime(SUB_FMT)
 

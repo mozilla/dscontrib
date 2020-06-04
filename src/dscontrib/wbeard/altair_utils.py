@@ -1,10 +1,18 @@
-import altair.vegalite.v3 as A
-
-Chart = A.Chart
+import altair.vegalite.v3 as A3
 
 
-def set_json(prefix="data/altair-data"):
+def set_json(prefix="data/altair-data", A=A3):
     A.data_transformers.enable("json", prefix=prefix)
+    A.Chart.pipe = pipe
+
+
+def set_ds(A):
+    """
+    https://github.com/altair-viz/altair/issues/1867#issuecomment-572879619
+    pip install altair_data_server
+    """
+    A.data_transformers.enable("data_server")
+    A.Chart.pipe = pipe
 
 
 def pipe(h, f):
@@ -25,8 +33,3 @@ def aconf(ch, l=22, m=18, sm=16):  # noqa
         .configure_title(fontSize=l)
         .configure_legend(titleFontSize=m, labelFontSize=sm)
     )
-
-
-A.Chart.pipe = pipe
-nz = A.Scale(zero=False)
-lgs = A.Scale(type="log", zero=False)

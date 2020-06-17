@@ -1,4 +1,5 @@
 import altair.vegalite.v3 as A3
+import altair.vegalite.v4 as A4
 
 
 def set_json(prefix="data/altair-data", A=A3):
@@ -10,6 +11,11 @@ def set_ds(A):
     """
     https://github.com/altair-viz/altair/issues/1867#issuecomment-572879619
     pip install altair_data_server
+
+    Another alternative here
+    https://github.com/altair-viz/altair/issues/1867#issuecomment-564643088
+    involving modifying register('json', to_json_for_lab)
+    with altair.utils.data.to_json
     """
     A.data_transformers.enable("data_server")
     A.Chart.pipe = pipe
@@ -33,3 +39,34 @@ def aconf(ch, l=22, m=18, sm=16):  # noqa
         .configure_title(fontSize=l)
         .configure_legend(titleFontSize=m, labelFontSize=sm)
     )
+
+
+def pat(df, x="time", y="y", st="o", c=None, by=None, ncols=3, yind=True, A=A4):
+    "Plot altair"
+    x = x
+    y = y
+    tooltip = [x, y]
+    if c is not None:
+        tooltip += [c]
+
+    h = A.Chart(df).encode(
+        x=A.X(x, title=x), y=A.Y(y, title=y, scale=A.Scale(zero=False)), tooltip=tooltip
+    )
+    if c is not None:
+        h = h.encode(color=c)
+
+    # Mark
+    if st == "o":
+        h = h.mark_point()
+    elif st == "-":
+        h = h.mark_line()
+    elif st == "o-":
+        h = h.mark_point() + h.mark_line()
+    else:
+        raise NotADirectoryError(f"What is this? {st}")
+
+    if by is not None:
+        h = h.encode(facet=A.Facet(by, columns=ncols))
+        if yind:
+            h = h.resolve_scale(y="independent")
+    return h.interactive()

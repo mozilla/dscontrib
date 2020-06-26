@@ -46,6 +46,7 @@ WHERE
   date_2020 >= "2020-01-01"
 	-- To remove the leap year day for yoy comparison
 	-- AND date_2020 != "2020-02-29"
+  AND date_2020 <= (SELECT max(cohort_date) FROM `moz-fx-data-shared-prod.telemetry.firefox_nondesktop_day_2_7_activation`)
 GROUP BY 1,2,3
 
 UNION ALL
@@ -68,4 +69,5 @@ WHERE
   date_2020 >= "2020-01-01"
 	-- To remove the leap year day for yoy comparison
 	-- AND date_2020 != "2020-02-29"
+  AND date_2020 <= (SELECT max(cohort_date) FROM `moz-fx-data-shared-prod.telemetry.firefox_nondesktop_day_2_7_activation`)
 GROUP BY 1,2,3

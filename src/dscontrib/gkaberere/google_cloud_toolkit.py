@@ -1,5 +1,5 @@
 from google.cloud import storage, bigquery
-from google.api_core.exceptions import NotFound, BadRequest
+from google.api_core.exceptions import NotFound
 import pandas as pd
 import logging
 
@@ -7,7 +7,7 @@ import logging
 # Bucket Stuff
 
 def upload_to_gcs_bucket(file, bucket, blob_name, project):
-    #TODO: Add params descriptions and documentation
+    # TODO: Add params descriptions and documentation
     logging.info(f'Starting upload of {file} to {bucket}')
     client = storage.Client(project=project)
     bucket = client.get_bucket(bucket)
@@ -23,8 +23,9 @@ def list_files_in_bucket(bucket_name, prefix):
     """
     Function used to extract a list of file names stored in a google cloud bucket
     :param bucket_name: Name of bucket
-    :param prefix: Specify level of files to retrieve. To see all prefix=''. To see files in a specific
-        folder prefix='folder1/folder2' <- NOTE no '/' at beginning
+    :param prefix: Specify level of files to retrieve. To see all prefix=''.
+                To see files in a specific folder prefix='folder1/folder2'
+                <- NOTE no '/' at beginning
     :return: list object with file names
     """
 
@@ -61,6 +62,7 @@ def create_bq_dataset(project_name, dataset_name, job_name):
         client.create_dataset(dataset)
         logging.info(f'{job_name}: Successfully created dataset {dataset_name}')
     return None
+
 
 def update_dataset_documentation():
     return None
@@ -120,11 +122,11 @@ def load_csv_data_from_gcs_bucket(project_name, dataset_id, table_name, schema, 
     load_job_config.source_format = bigquery.SourceFormat.CSV
     load_job_config.schema = schema
     load_job_config.field_delimiter = ','
-    #TODO: How to trigger these as options in the function using **args and **kwargs
-    #load_job_config.quote_character = '"'
-    #load_job_config.allow_quoted_newlines = True
-    #load_job_config.skip_leading_rows = 1
-    #load_job_config.max_bad_records = 20
+    # TODO: How to trigger these as options in the function using **args and **kwargs
+    # load_job_config.quote_character = '"'
+    # load_job_config.allow_quoted_newlines = True
+    # load_job_config.skip_leading_rows = 1
+    # load_job_config.max_bad_records = 20
     load_job_config.write_disposition = write_disposition
 
     job = client.load_table_from_uri(
@@ -218,7 +220,7 @@ def calc_last_load_date(project_name, dataset_id, table_name, date_field_name, j
     client = bigquery.Client(project=project_name)
     job_config = bigquery.QueryJobConfig()
 
-    #TODO: How to deal with when you need to insert a where clause to filter
+    # TODO: How to deal with when you need to insert a where clause to filter
     sql = f"""
         SELECT
         max({date_field_name}) AS last_load_date
@@ -230,7 +232,7 @@ def calc_last_load_date(project_name, dataset_id, table_name, date_field_name, j
         sql,
         location='US',
         job_config=job_config)  # API request - starts the query
-    #  Assign last date to last_load_date variable
+    # Assign last date to last_load_date variable
     for row in read_query:
         logging.info(f'{job_name}: Last load into {table_name} was for {row.last_load_date}')
         return row.last_load_date

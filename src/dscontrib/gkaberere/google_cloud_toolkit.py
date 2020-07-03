@@ -81,7 +81,7 @@ def create_bq_table(project_name, dataset_name, table_name, table_schema, job_na
     """
     # TODO: Add params descriptions and documentation
     # TODO: add a process to partition table as well as cluster for efficiency
-    logging.info(f'{job_name}: FN = create_bq_table: Starting job to create table {table_name}')
+    logging.info(f'{job_name}: FN = create_bq_table: Start to create table {table_name}')
     client = bigquery.Client(project=project_name)
     dataset_ref = client.dataset(dataset_name)
     table_ref = dataset_ref.table(table_name)

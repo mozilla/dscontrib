@@ -66,8 +66,6 @@ def create_bq_dataset(project_name, dataset_name, job_name):
 
 def update_dataset_documentation():
     return None
-#def load_into_bq_from_gcs_bucket():
-#    logging.info(f'{job_name}: Starting upload of {file} to bigquery')
 
 
 # Table Operations
@@ -101,7 +99,6 @@ def create_bq_table(project_name, dataset_name, table_name, table_schema, job_na
 
 def load_csv_data_from_gcs_bucket(project_name, dataset_id, table_name, schema, write_disposition, gcs_file_name, job_name):
     """
-
     Args:
         project_name:
         dataset_id:
@@ -112,7 +109,6 @@ def load_csv_data_from_gcs_bucket(project_name, dataset_id, table_name, schema, 
         job_name:
 
     Returns:
-
     """
     logging.info(f'{job_name}: Starting job to load {gcs_file_name} from google cloud storage to Bigquery')
     client = bigquery.Client(project=project_name)
@@ -143,7 +139,6 @@ def load_csv_data_from_gcs_bucket(project_name, dataset_id, table_name, schema, 
 
 def load_dataframe_to_bq_table(dataframe, project_name, dataset_id, table_name, write_disposition, job_name):
     """
-
     Args:
         dataframe:
         project_name:
@@ -151,9 +146,7 @@ def load_dataframe_to_bq_table(dataframe, project_name, dataset_id, table_name, 
         table_name:
         write_disposition:
         job_name:
-
     Returns:
-
     """
     logging.info(f'{job_name}: Starting load of dataframe {dataframe} into table {table_name}')
     client = bigquery.Client(project=project_name)
@@ -180,9 +173,7 @@ def get_list_of_bq_tables(job_name, project_name, dataset_id):
         job_name: Used for logging purposes. Can be name of script or manual.
         project_name: Bigquery project ID
         dataset_id: Bigquery dataset name
-
     Returns: Pandas dataframe with columns project_id, dataset_name, table_name and list of tables in the dataset
-
     """
     logging.info(f'{job_name}: Starting check for tables in project {project_name} for dataset = {dataset_id}')
     client = bigquery.Client(project=project_name)

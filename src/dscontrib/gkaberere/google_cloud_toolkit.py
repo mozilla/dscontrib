@@ -81,7 +81,7 @@ def create_bq_table(project_name, dataset_name, table_name, table_schema, job_na
     """
     # TODO: Add params descriptions and documentation
     # TODO: add a process to partition table as well as cluster for efficiency
-    logging.info(f'{job_name}: FN = create_bq_table: Start to create table {table_name}')
+    logging.info(f'{job_name}: Starting to create table {table_name}')
     client = bigquery.Client(project=project_name)
     dataset_ref = client.dataset(dataset_name)
     table_ref = dataset_ref.table(table_name)
@@ -170,10 +170,12 @@ def get_list_of_bq_tables(job_name, project_name, dataset_id):
     """
     Function retrieves list of tables from specified project and dataset
     Args:
-        job_name: Used for logging purposes. Can be name of script or manual.
+        job_name: Used for logging purposes.
+        Can be name of script or manual.
         project_name: Bigquery project ID
         dataset_id: Bigquery dataset name
-    Returns: Pandas dataframe with columns project_id, dataset_name, table_name and list of tables in the dataset
+    Returns: Pandas dataframe with columns project_id, dataset_name,
+    table_name and list of tables in the dataset
     """
     logging.info(f'{job_name}: Starting check for tables in project {project_name} for dataset = {dataset_id}')
     client = bigquery.Client(project=project_name)
@@ -184,7 +186,8 @@ def get_list_of_bq_tables(job_name, project_name, dataset_id):
 
     # Check if dataset exits
     try:
-        logging.info(f'{job_name}: Checking to see if dataset {dataset_id} exists')
+        logging.info(f'{job_name}: Checking to see if '
+                     f'dataset {dataset_id} exists')
         client.get_dataset(dataset_id)
         table_list = client.list_tables(dataset_id)
 
@@ -213,11 +216,11 @@ def calc_last_load_date(project_name, dataset_id, table_name, date_field_name, j
 
     # TODO: How to deal with when you need to insert a where clause to filter
     sql = f"""
-        SELECT
-        max({date_field_name}) AS last_load_date
-        FROM
-        `{project_name}.{dataset_id}.{table_name}`
-        """
+    SELECT
+    max({date_field_name}) AS last_load_date
+    FROM
+    `{project_name}.{dataset_id}.{table_name}`
+    """
     # Run the query
     read_query = client.query(
         sql,
@@ -234,7 +237,6 @@ def query_to_dataframe(project_name, sql_script, job_name):
     logging.info(f'{job_name}: Starting query run to dataframe')
     client = bigquery.Client(project=project_name)
     sql = sql_script
-
     dataframe = client.query(sql).to_dataframe()
     logging.info(f'{job_name}: Read complete and data stored in dataframe="dataframe"')
     return dataframe

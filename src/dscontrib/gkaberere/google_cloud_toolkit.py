@@ -93,11 +93,13 @@ def create_bq_table(project_name, dataset_name, table_name, table_schema, job_na
     except NotFound:
         table = bigquery.Table(table_ref, schema=table_schema)
         client.create_table(table)
-        logging.info(f'{job_name}: Table {table_name} successfully created in {project_name}.{dataset_name}')
+        logging.info(f'{job_name}: Table {table_name} successfully '
+                     f'created in {project_name}.{dataset_name}')
     return None
 
 
-def load_csv_data_from_gcs_bucket(project_name, dataset_id, table_name, schema, write_disposition, gcs_file_name, job_name):
+def load_csv_data_from_gcs_bucket(project_name, dataset_id, table_name, schema,
+                                  write_disposition, gcs_file_name, job_name):
     """
     Args:
         project_name:
@@ -110,7 +112,8 @@ def load_csv_data_from_gcs_bucket(project_name, dataset_id, table_name, schema, 
 
     Returns:
     """
-    logging.info(f'{job_name}: Starting job to load {gcs_file_name} from google cloud storage to Bigquery')
+    logging.info(f'{job_name}: Starting job to load {gcs_file_name} '
+                 f'from google cloud storage to Bigquery')
     client = bigquery.Client(project=project_name)
     dataset_ref = client.dataset(dataset_id)
     table_ref = dataset_ref.table(table_name)
@@ -133,11 +136,13 @@ def load_csv_data_from_gcs_bucket(project_name, dataset_id, table_name, schema, 
     )
 
     job.result()
-    logging.info(f'{job_name}: Loaded {job.output_rows} rows from file {gcs_file_name} to {table_ref}')
+    logging.info(f'{job_name}: Loaded {job.output_rows} rows from '
+                 f'file {gcs_file_name} to {table_ref}')
     return None
 
 
-def load_dataframe_to_bq_table(dataframe, project_name, dataset_id, table_name, write_disposition, job_name):
+def load_dataframe_to_bq_table(dataframe, project_name, dataset_id, table_name,
+                               write_disposition, job_name):
     """
     Args:
         dataframe:
@@ -148,7 +153,8 @@ def load_dataframe_to_bq_table(dataframe, project_name, dataset_id, table_name, 
         job_name:
     Returns:
     """
-    logging.info(f'{job_name}: Starting load of dataframe {dataframe} into table {table_name}')
+    logging.info(f'{job_name}: Starting load of dataframe '
+                 f'{dataframe} into table {table_name}')
     client = bigquery.Client(project=project_name)
     dataset_ref = client.dataset(dataset_id)
     table_ref = dataset_ref.table(table_name)
@@ -162,7 +168,8 @@ def load_dataframe_to_bq_table(dataframe, project_name, dataset_id, table_name, 
         job_config=job_config
     )
     job.result()
-    logging.info(f'{job_name}: Dataframe {dataframe} loaded {job.output_rows} into {table_ref.path}')
+    logging.info(f'{job_name}: Dataframe {dataframe} loaded '
+                 f'{job.output_rows} into {table_ref.path}')
     return None
 
 
@@ -177,7 +184,8 @@ def get_list_of_bq_tables(job_name, project_name, dataset_id):
     Returns: Pandas dataframe with columns project_id, dataset_name,
     table_name and list of tables in the dataset
     """
-    logging.info(f'{job_name}: Starting check for tables in project {project_name} for dataset = {dataset_id}')
+    logging.info(f'{job_name}: Starting check for tables in project {project_name} '
+                 f'for dataset = {dataset_id}')
     client = bigquery.Client(project=project_name)
 
     # Create dataframe to append table data to
@@ -202,13 +210,15 @@ def get_list_of_bq_tables(job_name, project_name, dataset_id):
 
             table_list_df = table_list_df.append(table_df, ignore_index=True)
     except NotFound:
-        logging.info(f'{job_name}: Dataset {dataset_id} Not Found - please check naming')
+        logging.info(f'{job_name}: Dataset {dataset_id} '
+                     f'Not Found - please check naming')
     return table_list_df
 
 
 # Query Operations
 
-def calc_last_load_date(project_name, dataset_id, table_name, date_field_name, job_name):
+def calc_last_load_date(project_name, dataset_id, table_name,
+                        date_field_name, job_name):
     logging.info(f'{job_name}: Starting check for last data loaded into {table_name}')
 
     client = bigquery.Client(project=project_name)
@@ -228,7 +238,8 @@ def calc_last_load_date(project_name, dataset_id, table_name, date_field_name, j
         job_config=job_config)  # API request - starts the query
     # Assign last date to last_load_date variable
     for row in read_query:
-        logging.info(f'{job_name}: Last load into {table_name} was for {row.last_load_date}')
+        logging.info(f'{job_name}: Last load into {table_name} was '
+                     f'for {row.last_load_date}')
         return row.last_load_date
     return None
 

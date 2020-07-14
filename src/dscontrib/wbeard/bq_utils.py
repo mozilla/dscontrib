@@ -9,6 +9,7 @@ from google.oauth2 import service_account  # type: ignore
 # bucket: 'moz-fx-data-derived-datasets-analysis'
 PROJ_DS = "moz-fx-data-bq-data-science"
 PROJ_DD = "moz-fx-data-derived-datasets"
+PROJ_SHARED = "moz-fx-data-shared-prod"
 
 _loc = os.environ.get("BQ_CREDS")
 if _loc is not None:
@@ -25,11 +26,19 @@ def bq_read(q):
     )
 
 
+def try_read(fn):
+    try:
+        path = PosixPath(fn)
+        if path.exists():
+            with open(path, "r") as fp:
+                q = fp.read()
+    except OSError:
+        q = fn
+    return q
+
+
 def bq_read2(q):
-    path = PosixPath(q)
-    if path.exists():
-        with open(path, "r") as fp:
-            q = fp.read()
+    q = try_read(q)
     return pd.read_gbq(
         q, project_id=creds.project_id, credentials=creds, dialect="standard"
     )

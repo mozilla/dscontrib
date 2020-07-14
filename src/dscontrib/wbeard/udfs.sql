@@ -10,3 +10,8 @@ CREATE TEMP FUNCTION geo_mean(xs any type) AS (
   -- when aggregating, use as `geo_mean(array_agg(i))`
   ((select exp(sum(ln(x)) / array_length(xs)) from unnest(xs) as x))
 );
+
+CREATE TEMP FUNCTION major_vers(st string) AS (
+  -- '10.0' => 10
+  cast(regexp_extract(st, '(\\d+)\\.?') as int64)
+);

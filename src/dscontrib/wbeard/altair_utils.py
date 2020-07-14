@@ -41,16 +41,29 @@ def aconf(ch, l=22, m=18, sm=16):  # noqa
     )
 
 
-def pat(df, x="time", y="y", st="o", c=None, by=None, ncols=3, yind=True, A=A4):
+def pat(
+    df,
+    x="time",
+    y="y",
+    st="o",
+    c=None,
+    by=None,
+    ncols=3,
+    e1=None,
+    e2=None,
+    yind=True,
+    tt_extra=[],
+    A=A4,
+):
     "Plot altair"
-    x = x
-    y = y
-    tooltip = [x, y]
+    tooltip = [x, y] + tt_extra
     if c is not None:
         tooltip += [c]
 
     h = A.Chart(df).encode(
-        x=A.X(x, title=x), y=A.Y(y, title=y, scale=A.Scale(zero=False)), tooltip=tooltip
+        x=A.X(x, title=x),
+        y=A.Y(y, title=y, scale=A.Scale(zero=False)),
+        tooltip=tooltip,
     )
     if c is not None:
         h = h.encode(color=c)
@@ -63,7 +76,12 @@ def pat(df, x="time", y="y", st="o", c=None, by=None, ncols=3, yind=True, A=A4):
     elif st == "o-":
         h = h.mark_point() + h.mark_line()
     else:
-        raise NotADirectoryError(f"What is this? {st}")
+        raise NotImplementedError(f"What is this? {st}")
+
+    if e1 is not None:
+        h = h + h.mark_errorband().encode(
+            y=A.Y(e1, title=y), y2=A.Y2(e2, title=y)
+        )
 
     if by is not None:
         h = h.encode(facet=A.Facet(by, columns=ncols))

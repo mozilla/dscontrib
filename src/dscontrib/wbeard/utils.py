@@ -68,7 +68,9 @@ def s3_dash(date):
 
 
 # Stats
-def clip_srs(s, clip_percentile=99.9, ignore_nulls=True, val=None, vb=False):
+def clip_srs(
+    s, clip_percentile=99.9, ignore_nulls=True, val=None, vb=False
+):
     if val is None:
         if ignore_nulls:
             val = np.percentile(s[s == s], clip_percentile)
@@ -102,63 +104,3 @@ def working_directory(path):
 
 
 # Pandas
-def requires_cols(requires, assert_new=None, keep_extra=True, verbose=False):
-    """
-    Decorator to document and ensure that a function
-    requires the DataFrame (which is the first argument)
-    to have columns `requires`.
-    To ensure
-    The following function
-
-    @requires_cols(['a', 'b'])
-    def add_a_b(df):
-        return df.a + df.b
-
-    will raise a KeyError on the following input:
-    >>> add_a_b(DataFrame(dict(a=[1, 2], c=[10, 10])))
-    but not on the following
-    >>> add_a_b(DataFrame(dict(a=[1, 2], b=[10, 10])))
-
-    This mainly helps document the required columns that
-    a DataFrame will need, and enforces the documentation.
-
-    If `assert_new` is a sequence of columns, the decorator
-    ensures that the function creates these new columns exactly.
-    E.g.,
-
-    @requires_cols(['a', 'b'], assert_new=['c'])
-    def add_a_b(df):
-        df['c'] = df.a + df.b
-        return df
-    """
-    assert_new = set(assert_new or [])
-
-    def deco(f):
-        @wraps(f)
-        def wrapper(df, **kw):
-            orig_cols = set(df)
-            _df = df
-            df = df[requires].copy()
-            tmp_missing_cols = set(df) - orig_cols
-
-            res_df = f(df, **kw)
-
-            if assert_new:
-                assert isinstance(
-                    res_df, pd.DataFrame
-                ), f"result is a {type(res_df)}, not a DataFrame"
-                new_cols = set(res_df) - set(requires)
-                assert new_cols == assert_new, f"{new_cols} != {assert_new}"
-
-            if verbose:
-                s2 = set(res_df)
-                print(f"+ {sorted(s2 - set(requires))}")
-                print(f"- {sorted(set(requires) - s2)}")
-            if keep_extra:
-                for c in tmp_missing_cols:
-                    res_df[c] = _df[c]
-            return res_df
-
-        return wrapper
-
-    return deco

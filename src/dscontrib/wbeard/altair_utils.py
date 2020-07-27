@@ -52,6 +52,7 @@ def pat(
     e1=None,
     e2=None,
     yind=True,
+    nz=True,
     tt_extra=[],
     A=A4,
 ):
@@ -59,10 +60,11 @@ def pat(
     tooltip = [x, y] + tt_extra
     if c is not None:
         tooltip += [c]
+    zscale = A.Scale(zero=not nz)
 
     h = A.Chart(df).encode(
         x=A.X(x, title=x),
-        y=A.Y(y, title=y, scale=A.Scale(zero=False)),
+        y=A.Y(y, title=y, scale=zscale),
         tooltip=tooltip,
     )
     if c is not None:
@@ -80,7 +82,7 @@ def pat(
 
     if e1 is not None:
         h = h + h.mark_errorband().encode(
-            y=A.Y(e1, title=y), y2=A.Y2(e2, title=y)
+            y=A.Y(e1, title=y, scale=zscale), y2=A.Y2(e2, title=y)
         )
 
     if by is not None:

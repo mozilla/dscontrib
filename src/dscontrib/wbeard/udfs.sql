@@ -15,3 +15,9 @@ CREATE TEMP FUNCTION major_vers(st string) AS (
   -- '10.0' => 10
   cast(regexp_extract(st, '(\\d+)\\.?') as int64)
 );
+
+CREATE TEMP FUNCTION get_branch(hist ANY TYPE, k string) AS (
+    -- get_branch(m.environment.experiments, 'bug-1622934-pref-webrender-continued-v2-nightly-only-nightly-76-80')
+    `mozfun.map.get_key`(hist, k).branch
+);
+

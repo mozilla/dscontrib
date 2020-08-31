@@ -1,5 +1,3 @@
--- Dashboard Link: https://datastudio.google.com/reporting/1L7dsFyqjT8XZHrYprYS-HCP5_k_gZGIb/page/0iERB
-
 WITH data as (
 SELECT
   DATE_SUB(submission_date, INTERVAL 6 DAY) AS cohort_date,
@@ -30,7 +28,9 @@ FROM
   data)
 
 SELECT
-  *,
+  * EXCEPT (product, product_group),
+  CASE WHEN product = "FirefoxConnect" THEN "Echo Show" ELSE product END as product,
+  CASE WHEN product_group = "FirefoxConnect" THEN "Echo Show" ELSE product_group END as product_group,
   CASE WHEN EXTRACT(YEAR FROM cohort_date) = EXTRACT(YEAR FROM current_date) THEN new_profiles_7_day_avg ELSE 0 END as new_profiles_7_day_avg_current_year,
   CASE WHEN EXTRACT(YEAR FROM cohort_date) = EXTRACT(YEAR FROM current_date) THEN activated_7_day_avg ELSE 0 END as activated_7_day_avg_current_year,
   CASE WHEN EXTRACT(YEAR FROM cohort_date) = EXTRACT(YEAR FROM current_date)-1 THEN new_profiles_7_day_avg ELSE 0 END as new_profiles_7_day_avg_prior_year,

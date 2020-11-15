@@ -9,6 +9,8 @@ SELECT
   SAFE_DIVIDE(SUM(day_2_7_activated), SUM(new_profiles)) as day_2_7_activation
 FROM
   `moz-fx-data-shared-prod.telemetry.firefox_nondesktop_day_2_7_activation`
+WHERE
+  product NOT IN ('Firefox Reality', 'Lockwise iOS')
 GROUP BY
   1,2,3,4
 ),
@@ -26,12 +28,11 @@ ORDER BY
 
 SELECT
   date_2020 as cohort_date,
-  CASE WHEN product = "FirefoxConnect" THEN "Echo Show" ELSE product END as product,
+  product,
   country,
   CASE
-    WHEN product IN ("Fennec Android", "Fenix", "Firefox Preview", "Focus Android", "Firefox Lite", "Lockwise Android") THEN 'All Android Products'
-    WHEN product IN ("Fennec iOS", "Focus iOS") THEN 'All iOS Products'
-	WHEN product = "FirefoxConnect" THEN "Echo Show"
+    WHEN product IN ("Fennec", "Fenix", "Firefox Preview", "Focus Android", "Firefox Lite", "Lockwise Android") THEN 'All Android Products'
+    WHEN product IN ("Firefox iOS", "Focus iOS") THEN 'All iOS Products'
     ELSE product END as product_group,
   SUM(CASE WHEN year = 2019 THEN new_profiles ELSE 0 END) as new_profiles_2019,
   SUM(CASE WHEN year = 2020 THEN new_profiles ELSE 0 END) as new_profiles_2020,
@@ -54,7 +55,7 @@ UNION ALL
 
 SELECT
   date_2020 as cohort_date,
-  CASE WHEN product = "FirefoxConnect" THEN "Echo Show" ELSE product END as product,
+  product,
   country,
   'All Products' as product_group,
   SUM(CASE WHEN year = 2019 THEN new_profiles ELSE 0 END) as new_profiles_2019,

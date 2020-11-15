@@ -1,5 +1,3 @@
--- https://datastudio.google.com/reporting/1L7dsFyqjT8XZHrYprYS-HCP5_k_gZGIb/page/fujVB/edit
-
 -- Query to power yoy tracking of unique pageviews for the app stores, a 2020 KR
 WITH playstore_data as (
 -- Pull all playstore data by source
@@ -47,17 +45,16 @@ WHERE
 max_date as (
 -- Gplay vs Apple Store data comes in at different cadences. Limiting to the minimum max(date) between the two data sources to avoid confusion
 SELECT
-  MIN(end_date) as end_date
-FROM(
-  SELECT
-    MAX(date) as end_date
-  FROM
-    `moz-fx-data-marketing-prod.apple_app_store.metrics_by_source`
-  UNION ALL
-  SELECT
-    max(date) as end_date
-  FROM
-    `moz-fx-data-marketing-prod.google_play_store.p_Retained_installers_channel_v1`))
+  'apple_end_date' as source,
+  MAX(date) as end_date
+FROM
+  `moz-fx-data-marketing-prod.apple_app_store.metrics_by_source`
+UNION ALL
+SELECT
+  'gplay_end_date' as source,
+  max(date) as gplay_end_date
+FROM
+  `moz-fx-data-marketing-prod.google_play_store.p_Retained_installers_channel_v1`)
 
 -- Android products by product
 SELECT
@@ -106,7 +103,7 @@ WHERE
 	-- To remove the leap year day for yoy comparison
 	/*AND date_2020 != "2020-02-29"*/
   -- Limit to minimum max date between the two store data sources
-  AND date_2020 <= (SELECT end_date FROM max_date)
+  AND date_2020 <= (SELECT end_date FROM max_date WHERE source = 'gplay_end_date')
 GROUP BY 1,2,3,4
 
 UNION ALL
@@ -132,7 +129,7 @@ WHERE
 	-- To remove the leap year day for yoy comparison
 	/*AND date_2020 != "2020-02-29"*/
   -- Limit to minimum max date between the two store data sources
-  AND date_2020 <= (SELECT end_date FROM max_date)
+  AND date_2020 <= (SELECT end_date FROM max_date WHERE source = 'gplay_end_date')
   -- Selecting only products that are part of Non Desktop MAU to be included in All Android Products total chart
   AND Package_Name IN ('org.mozilla.firefox', 'org.mozilla.firefox_beta', 'org.mozilla.fennec_aurora', 'org.mozilla.focus', 'org.mozilla.fenix', 'org.mozilla.fenix.nightly', 'org.mozilla.rocket', 'mozilla.lockbox', 'org.mozilla.klar')
 GROUP BY 1,2,3,4
@@ -158,7 +155,7 @@ FROM
 WHERE
   date_2020 >= "2020-01-01"
   /*AND date_2020 != "2020-02-29"*/
-  AND date_2020 <= (SELECT end_date FROM max_date)
+  AND date_2020 <= (SELECT end_date FROM max_date WHERE source = 'apple_end_date')
 GROUP BY 1,2,3,4
 
 UNION ALL
@@ -184,7 +181,7 @@ WHERE
   -- To remove the leap year day for yoy comparison
   /*AND date_2020 != "2020-02-29"*/
   -- Limit to minimum max date between the two store data sources
-  AND date_2020 <= (SELECT end_date FROM max_date)
+  AND date_2020 <= (SELECT end_date FROM max_date WHERE source = 'apple_end_date')
   -- Selecting only products that are part of Non Desktop MAU to be included in All iOS Products total chart
   AND browser IN ('Fennec iOS', 'Focus iOS', 'Firefox Lockwise iOS', 'Firefox Klar iOS')
 GROUP BY 1,2,3,4
@@ -211,7 +208,7 @@ WHERE
   -- To remove the leap year day for yoy comparison
   /*AND date_2020 != "2020-02-29"*/
   -- Limit to minimum max date between the two store data sources
-  AND date_2020 <= (SELECT end_date FROM max_date)
+  AND date_2020 <= (SELECT min(end_date) FROM max_date)
   -- Selecting only products that are part of Non Desktop MAU to be included in All iOS Products total chart
   AND browser IN ('Fennec iOS', 'Focus iOS', 'Firefox Lockwise iOS', 'Firefox Klar iOS')
 GROUP BY 1,2,3,4
@@ -238,7 +235,7 @@ WHERE
 	-- To remove the leap year day for yoy comparison
 	/*AND date_2020 != "2020-02-29"*/
   -- Limit to minimum max date between the two store data sources
-  AND date_2020 <= (SELECT end_date FROM max_date)
+  AND date_2020 <= (SELECT min(end_date) FROM max_date)
   -- Selecting only products that are part of Non Desktop MAU to be included in All Android Products total chart
   AND Package_Name IN ('org.mozilla.firefox', 'org.mozilla.firefox_beta', 'org.mozilla.fennec_aurora', 'org.mozilla.focus', 'org.mozilla.fenix', 'org.mozilla.fenix.nightly', 'org.mozilla.rocket', 'mozilla.lockbox', 'org.mozilla.klar')
 GROUP BY 1,2,3,4

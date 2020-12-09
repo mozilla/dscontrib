@@ -253,5 +253,11 @@ def query_to_dataframe(project_name, sql_script, job_name):
     return dataframe
 
 
+def read_sql_script(sql_file_path):
+    with open(sql_file_path, 'r') as sql_file:
+        sql_script = sql_file.read()
+        return sql_script
+
+
 if __name__ == '__main__':
     print("Nothing to Run")
